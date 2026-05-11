@@ -1,15 +1,21 @@
 @echo off
 setlocal enabledelayedexpansion
 
+set "SCRIPT_DIR=%~dp0"
+pushd "%SCRIPT_DIR%\..\..\.." >nul
+set "PROJECT_ROOT=%CD%"
+popd >nul
+
 set "START_TAG=<ailovecode-workflow>"
 set "END_TAG=</ailovecode-workflow>"
 
-call :update_file AGENTS.md
-call :update_file CLAUDE.md
+call :update_file "%PROJECT_ROOT%\AGENTS.md"
+call :update_file "%PROJECT_ROOT%\CLAUDE.md"
 
 echo.
-echo AILoveCode Workflow installation completed.
-echo AI tools should now reference workflow/guidelines.md.
+echo AILoveCode Workflow installed at project root:
+echo %PROJECT_ROOT%
+
 exit /b 0
 
 :update_file
@@ -51,17 +57,17 @@ if "%FOUND_BLOCK%"=="1" (
     )
 
     move /Y "%TEMP_FILE%" "%FILE%" >nul
-    echo Updated existing AILoveCode Workflow block in %FILE%
+    echo Updated: %FILE%
 ) else (
     if exist "%FILE%" (
         echo.>>"%FILE%"
         call :write_block "%FILE%"
-        echo Appended AILoveCode Workflow block to %FILE%
+        echo Appended: %FILE%
     ) else (
-        echo # %FILE%>"%FILE%"
+        echo # %~nx1>"%FILE%"
         echo.>>"%FILE%"
         call :write_block "%FILE%"
-        echo Created %FILE%
+        echo Created: %FILE%
     )
 )
 
@@ -88,4 +94,5 @@ echo - Keep documentation minimal and practical.
 echo - Keep task-related files inside the relevant task folder.
 echo ^</ailovecode-workflow^>
 )>>"%TARGET%"
+
 exit /b 0

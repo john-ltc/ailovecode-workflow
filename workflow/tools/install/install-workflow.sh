@@ -2,6 +2,9 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
 START_TAG="<ailovecode-workflow>"
 END_TAG="</ailovecode-workflow>"
 
@@ -44,28 +47,31 @@ update_file() {
         }
         !in_block { print }
       ' "$file" > "$file.tmp"
+
       mv "$file.tmp" "$file"
-      echo "Updated existing AILoveCode Workflow block in $file"
+      echo "Updated: $file"
     else
       {
         echo ""
         echo "$BLOCK"
       } >> "$file"
-      echo "Appended AILoveCode Workflow block to $file"
+
+      echo "Appended: $file"
     fi
   else
     {
-      echo "# $file"
+      echo "# $(basename "$file")"
       echo ""
       echo "$BLOCK"
     } > "$file"
-    echo "Created $file"
+
+    echo "Created: $file"
   fi
 }
 
-update_file "AGENTS.md"
-update_file "CLAUDE.md"
+update_file "$PROJECT_ROOT/AGENTS.md"
+update_file "$PROJECT_ROOT/CLAUDE.md"
 
 echo ""
-echo "AILoveCode Workflow installation completed."
-echo "AI tools should now reference workflow/guidelines.md."
+echo "AILoveCode Workflow installed at project root:"
+echo "$PROJECT_ROOT"
