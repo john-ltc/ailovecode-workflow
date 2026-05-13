@@ -21,7 +21,7 @@ If the tool is unavailable, AI should manually create the same structure.
 Required structure:
 
 ```txt
-/tasks
+/workflow/tasks
   /YYYYMMDDTHHMM_task-name
     task.md
     implementation-plan.md
@@ -41,7 +41,7 @@ Rules:
 
 ## Task Folder Naming
 
-Task folders must follow:
+Task folders live under `workflow/tasks` and must follow:
 
 ```txt
 YYYYMMDDTHHMM_task-name
