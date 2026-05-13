@@ -106,6 +106,62 @@ Rules:
 
 ---
 
+## implementation-plan.md Structure
+
+`implementation-plan.md` should follow this structure:
+
+```md
+# Implementation Plan: Task Name
+
+## Summary
+
+## Goals
+
+## Architecture
+
+## Implementation Steps
+
+## Testing
+
+## Progress
+```
+
+---
+
+## Milestone Format
+
+Inside `Implementation Steps`, use milestones with checkboxes.
+
+Example:
+
+```md
+## Implementation Steps
+
+### Milestone 1: Example Milestone
+
+- [ ] Step 1
+- [ ] Step 2
+- [ ] Step 3
+
+Exit criteria:
+
+- [ ] Expected result
+
+Implemented in:
+
+- [path/to/file.php](path/to/file.php)
+```
+
+Rules:
+
+- Use milestones for meaningful implementation phases
+- Use checkboxes for trackable progress
+- Each milestone should have exit criteria
+- Add `Implemented in` section when implementation is completed
+- Keep milestones focused and practical
+
+---
+
 ## supporting-materials
 
 Use `supporting-materials` for task-related files.
