@@ -6,37 +6,17 @@ if [ -z "$1" ]; then
 fi
 
 TASK_NAME="$1"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-SLUG=$(echo "$TASK_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\\+/-/g' | sed 's/^-//' | sed 's/-$//')
+SLUG=$(echo "$TASK_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//' | sed 's/-$//')
 
-TIMESTAMP=$(date +"%Y%m%d_%H%M")
+TIMESTAMP=$(date +"%Y%m%dT%H%M")
 
-TASK_PATH="../../tasks/${TIMESTAMP}_${SLUG}"
+TASK_PATH="$SCRIPT_DIR/../../tasks/${TIMESTAMP}_${SLUG}"
 
 mkdir -p "$TASK_PATH/supporting-materials"
 
-cat <<EOF > "$TASK_PATH/task.md"
-# $TASK_NAME
-
-## Notes
-
-EOF
-
-cat <<EOF > "$TASK_PATH/implementation-plan.md"
-# Implementation Plan: $TASK_NAME
-
-## Summary
-
-## Goals
-
-## Architecture
-
-## Implementation Steps
-
-## Testing
-
-## Progress
-
-EOF
+: > "$TASK_PATH/task.md"
+: > "$TASK_PATH/implementation-plan.md"
 
 echo "Task created: $TASK_PATH"

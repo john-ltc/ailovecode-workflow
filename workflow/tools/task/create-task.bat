@@ -6,38 +6,20 @@ if "%~1"=="" (
     exit /b 1
 )
 
-set TASK_NAME=%~1
+set "TASK_NAME=%~1"
+set "SCRIPT_DIR=%~dp0"
 
-for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmm"') do set TIMESTAMP=%%i
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMddTHHmm"') do set "TIMESTAMP=%%i"
 
-set SLUG=%TASK_NAME: =-%
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "$s='%TASK_NAME%'.ToLower(); $s = $s -replace '[^a-z0-9]+','-'; $s.Trim('-')"`) do set "SLUG=%%i"
 
-set TASK_PATH=..\\..\\tasks\\%TIMESTAMP%_%SLUG%
+set "TASK_PATH=%SCRIPT_DIR%..\..\tasks\%TIMESTAMP%_%SLUG%"
 
-mkdir "%TASK_PATH%\\supporting-materials"
+mkdir "%TASK_PATH%\supporting-materials"
 
-(
-echo # %TASK_NAME%
-echo.
-echo ## Notes
-echo.
-) > "%TASK_PATH%\\task.md"
-
-(
-echo # Implementation Plan: %TASK_NAME%
-echo.
-echo ## Summary
-echo.
-echo ## Goals
-echo.
-echo ## Architecture
-echo.
-echo ## Implementation Steps
-echo.
-echo ## Testing
-echo.
-echo ## Progress
-echo.
-) > "%TASK_PATH%\\implementation-plan.md"
+type nul > "%TASK_PATH%\task.md"
+type nul > "%TASK_PATH%\implementation-plan.md"
 
 echo Task created: %TASK_PATH%
+
+endlocal
