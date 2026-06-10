@@ -6,238 +6,183 @@ A lightweight workflow for AI-assisted software development.
 
 This project focuses on:
 
-- lightweight workflow
-- structured task management
-- minimal documentation
-- predictable implementation flow
+* lightweight workflow
+* structured task management
+* minimal documentation
+* predictable implementation flow
 
 The goal is to make AI-assisted development:
 
-- cleaner
-- more maintainable
-- more traceable
+* cleaner
+* more maintainable
+* more traceable
 
 ---
 
-# Core Concepts
+## Installation
 
-## task.md
+Initialize the workflow in your project:
 
-User-owned source of truth.
+```bash
+ailovecode-workflow init
+```
 
-This file may contain:
-
-- requirements
-- issues
-- rough notes
-- screenshots
-- copied discussions
-- implementation requests
-
-Rules:
-
-- AI should read and follow `task.md`
-- AI should NOT modify `task.md` unless explicitly requested
-
----
-
-## implementation-plan.md
-
-AI execution workspace with human review and approval.
-
-This file may contain:
-
-- implementation planning
-- architecture notes
-- technical decisions
-- testing plans
-- progress tracking
-- clarification findings
-
----
-
-## guidelines.md
-
-Defines the workflow rules.
-
-This file contains:
-
-- project structure
-- task rules
-- AI workflow conventions
-- documentation philosophy
-- contributor expectations
-
----
-
-# Workflow Structure
+This creates:
 
 ```txt
-/workflow
-  guidelines.md
+workflow/
+├── guidelines.md
+├── README.md
+├── tasks/
 
-  /tasks
-    /20260429T1530_new-feature
-      task.md
-      implementation-plan.md
-
-      /supporting-materials
-
-  /tools
-    /install
-      install-workflow.sh
-      install-workflow.bat
-
-    /task
-      create-task.sh
-      create-task.bat
+AGENTS.md
+CLAUDE.md
 ```
 
 ---
 
-# Task Structure
+## Updating Workflow
 
-Each task should follow:
+Update an existing workflow installation:
 
-```txt
-/tasks
-  /20260429T1530_new-feature
-    task.md
-    implementation-plan.md
-
-    /supporting-materials
+```bash
+ailovecode-workflow update
 ```
 
-Task naming format:
+This updates:
+
+* `workflow/guidelines.md`
+* `workflow/README.md`
+* workflow-managed sections in:
+
+  * `AGENTS.md`
+  * `CLAUDE.md`
+
+This preserves:
 
 ```txt
-YYYYMMDDTHHMM_task-name
+workflow/tasks/
 ```
 
-Examples:
-
-```txt
-20260429T1530_create-project
-20260429T1600_new-feature
-20260429T1730_fix-issue
-```
+and any project-specific content outside the workflow-managed sections.
 
 ---
 
-## supporting-materials
+## Create Task
 
-Optional files that support task implementation.
+Create a new task:
 
-Examples:
-
-- screenshots
-- logs
-- request payloads
-- response payloads
-- recordings
-- exported files
-- reference images
-- copied discussions
-
-Purpose:
-
-```txt
-Keep all task-related references together within task.
+```bash
+ailovecode-workflow create-task "new-feature"
 ```
-
----
-
-# Installation
-
-Copy the `workflow/` directory into your project root.
 
 Example:
 
+```bash
+ailovecode-workflow create-task "add-user-profile"
+```
+
+Result:
+
 ```txt
-my-project/
-  workflow/
+workflow/tasks/
+└── YYYYMMDDTHHMM_add-user-profile
+    ├── task.md
+    ├── implementation-plan.md
+    └── supporting-materials/
 ```
 
-Then run the install tool.
+---
 
-## Windows
+## Recommended Workflow
 
-```powershell
-.\workflow\tools\install\install-workflow.bat
-```
-
-## Linux/macOS
+### 1. Create Task
 
 ```bash
-./workflow/tools/install/install-workflow.sh
+ailovecode-workflow create-task "new-feature"
 ```
 
-The install tool updates:
+### 2. Write Requirements
 
-- `AGENTS.md`
-- `CLAUDE.md`
-
-so AI tools can follow the workflow automatically.
-
----
-
-# Create Task
-
-The task creation tool helps create a new task structure automatically.
-
-## Windows
-
-```powershell
-.\workflow\tools\task\create-task.bat "new feature"
-```
-
-## Linux/macOS
-
-```bash
-./workflow/tools/task/create-task.sh "new feature"
-```
-
-Example output:
+Write requirements in:
 
 ```txt
-/tasks
-  /20260429T1530_new-feature
-    task.md
-    implementation-plan.md
+task.md
+```
 
-    /supporting-materials
+### 3. Understand the Task
+
+```text
+Understand the task.
+```
+
+### 4. Create Implementation Plan
+
+```text
+Create an implementation plan for this task.
+```
+
+### 5. Implement the Plan
+
+```text
+Implement the plan.
 ```
 
 ---
 
-# Recommended Workflow
+## Core Concepts
+
+### task.md
+
+User-owned source of truth.
+
+Rules:
+
+* AI should read and follow `task.md`
+* AI should NOT modify `task.md` unless explicitly requested
+
+### implementation-plan.md
+
+AI execution workspace with human review and approval.
+
+Used for:
+
+* implementation planning
+* architecture notes
+* technical decisions
+* testing plans
+* progress tracking
+
+### guidelines.md
+
+Defines workflow rules and AI behavior.
+
+---
+
+## Project Structure
 
 ```txt
-1. Human creates task folder
-2. Human writes task.md
-3. AI reads task.md
-4. AI creates implementation-plan.md
-5. Human reviews and approves implementation plan
-6. AI implements changes
+workflow/
+├── guidelines.md
+├── README.md
+├── tasks/
+│   └── YYYYMMDDTHHMM_task-name
+│       ├── task.md
+│       ├── implementation-plan.md
+│       └── supporting-materials/
 ```
 
 ---
 
-# Notes
+## Notes
 
-- The workflow is intentionally lightweight.
-- Tools are optional helpers.
-- Tasks are the center of the workflow.
-- Keep documentation minimal and practical.
-
----
-
-# Contributing
-
-Core workflow files should remain stable unless changes are discussed first.
+* The workflow is intentionally lightweight.
+* Tasks are the center of the workflow.
+* Keep documentation minimal and practical.
+* Workflow commands are optional conveniences, not hard requirements.
 
 ---
 
-# License
+## License
 
 MIT

@@ -2,21 +2,13 @@
 
 ## Task Creation
 
-When creating a new task, use the official task creation tool if available.
-
-### Windows
-
-```powershell
-.\workflow\tools\task\create-task.bat "task name"
-```
-
-### Linux/macOS
+When creating a new task, use the official task creation command if available.
 
 ```bash
-./workflow/tools/task/create-task.sh "task name"
+ailovecode-workflow create-task "new-task"
 ```
 
-If the tool is unavailable, AI should manually create the same structure.
+If the official task creation command is unavailable, AI should manually create the same structure.
 
 Required structure:
 
@@ -31,11 +23,11 @@ Required structure:
 
 Rules:
 
-- `task.md` must be created empty
-- `implementation-plan.md` must be created empty
-- Do not pre-generate implementation plans during task creation
-- Human writes `task.md` first
-- AI creates `implementation-plan.md` only after reading `task.md`
+* `task.md` must be created empty
+* `implementation-plan.md` must be created empty
+* Do not pre-generate implementation plans during task creation
+* Human writes `task.md` first
+* AI creates `implementation-plan.md` only after reading `task.md`
 
 ---
 
@@ -57,9 +49,9 @@ Examples:
 
 Rules:
 
-- Use 24-hour time
-- Use lowercase kebab-case
-- Keep names short and meaningful
+* Use 24-hour time
+* Use lowercase kebab-case
+* Keep names short and meaningful
 
 ---
 
@@ -69,20 +61,20 @@ Rules:
 
 It may contain:
 
-- requirements
-- issues
-- rough notes
-- screenshots
-- copied discussions
-- implementation requests
-- clarification notes
+* requirements
+* issues
+* rough notes
+* screenshots
+* copied discussions
+* implementation requests
+* clarification notes
 
 Rules:
 
-- Read `task.md` before implementation
-- Do not modify `task.md` unless explicitly requested
-- Do not overwrite user intent
-- Do not silently rewrite requirements
+* Read `task.md` before implementation
+* Do not modify `task.md` unless explicitly requested
+* Do not overwrite user intent
+* Do not silently rewrite requirements
 
 ---
 
@@ -90,19 +82,19 @@ Rules:
 
 Use `implementation-plan.md` for:
 
-- implementation planning
-- architecture notes
-- technical decisions
-- progress tracking
-- clarification findings
-- testing plans
+* implementation planning
+* architecture notes
+* technical decisions
+* progress tracking
+* clarification findings
+* testing plans
 
 Rules:
 
-- Create or update `implementation-plan.md` before implementation
-- Keep implementation notes concise and practical
-- Update the plan when meaningful decisions or progress happen
-- Keep task-related implementation details inside the task folder
+* Create or update `implementation-plan.md` before implementation
+* Keep implementation notes concise and practical
+* Update the plan when meaningful decisions or progress happen
+* Keep task-related implementation details inside the task folder
 
 ---
 
@@ -154,11 +146,11 @@ Implemented in:
 
 Rules:
 
-- Use milestones for meaningful implementation phases
-- Use checkboxes for trackable progress
-- Each milestone should have exit criteria
-- Add `Implemented in` section when implementation is completed
-- Keep milestones focused and practical
+* Use milestones for meaningful implementation phases
+* Use checkboxes for trackable progress
+* Each milestone should have exit criteria
+* Add `Implemented in` section when implementation is completed
+* Keep milestones focused and practical
 
 ---
 
@@ -206,14 +198,14 @@ Use `supporting-materials` for task-related files.
 
 Examples:
 
-- screenshots
-- logs
-- request payloads
-- response payloads
-- recordings
-- exported files
-- reference materials
-- copied discussions
+* screenshots
+* logs
+* request payloads
+* response payloads
+* recordings
+* exported files
+* reference materials
+* copied discussions
 
 Purpose:
 
@@ -264,19 +256,19 @@ State that the AI is ready to create or update the implementation plan.
 
 ## Documentation Rules
 
-- Keep documentation minimal and practical
-- Avoid unnecessary documentation files
-- Avoid duplicate documentation
-- Keep task-related information inside the relevant task folder
-- Prefer updating existing files over creating new ones
+* Keep documentation minimal and practical
+* Avoid unnecessary documentation files
+* Avoid duplicate documentation
+* Keep task-related information inside the relevant task folder
+* Prefer updating existing files over creating new ones
 
 ---
 
 ## Important Rules
 
-- Follow existing project conventions
-- Keep changes focused
-- Avoid unnecessary refactoring
-- Do not modify workflow structure unless requested
-- Use workflow tools when available
-- Workflow tools are helpers, not hard dependencies
+* Follow existing project conventions
+* Keep changes focused
+* Avoid unnecessary refactoring
+* Do not modify workflow structure unless requested
+* Use the official workflow creation method when available
+* Workflow commands are optional conveniences, not hard requirements.
