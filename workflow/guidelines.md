@@ -162,6 +162,44 @@ Rules:
 
 ---
 
+## Development Checkpoint
+
+During implementation, the AI should identify the first meaningful point where the feature becomes runnable or testable.
+
+At that point, the AI should pause and provide a Development Checkpoint update.
+
+The purpose is to allow the user to test and validate the implementation before additional work continues.
+
+A Development Checkpoint should only be created when there is something meaningful to test.
+
+Do not create checkpoints for incomplete technical work that cannot be validated by the user.
+
+The AI should use reasonable judgment to determine whether a Development Checkpoint provides value.
+
+Small fixes, minor refactoring, documentation updates, or short tasks do not require a Development Checkpoint.
+
+The goal is to provide checkpoints when they help the user validate progress, not to interrupt implementation unnecessarily.
+
+The checkpoint should include:
+
+### Completed
+
+What has been implemented.
+
+### Ready for Testing
+
+What the user can test immediately.
+
+### Remaining Work
+
+What is not completed yet.
+
+### Next Step
+
+Ask whether to continue implementation.
+
+---
+
 ## supporting-materials
 
 Use `supporting-materials` for task-related files.
@@ -191,9 +229,36 @@ Before implementation:
 
 1. Read `workflow/guidelines.md`
 2. Read `task.md`
-3. Read `implementation-plan.md` if it exists
-4. Update `implementation-plan.md`
-5. Implement changes
+3. Confirm task understanding before planning or implementation
+4. Read `implementation-plan.md` if it exists
+5. Create or update `implementation-plan.md`
+6. Implement changes
+7. If the feature reaches a meaningful runnable or testable state before completion, create a Development Checkpoint
+8. Continue implementation after user feedback or approval
+
+---
+
+## Task Understanding Response
+
+When the user asks the AI to understand, analyze, review, or read a task, the AI should provide a concise task understanding summary before proceeding.
+
+The response should include:
+
+### Summary
+
+A brief description of what the task is trying to achieve.
+
+### Key Requirements
+
+Important requirements identified from `task.md`.
+
+### Clarifications
+
+Any assumptions, risks, or unclear areas that may require confirmation.
+
+### Next Step
+
+State that the AI is ready to create or update the implementation plan.
 
 ---
 
