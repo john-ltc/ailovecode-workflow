@@ -5,7 +5,7 @@
 When creating a new task, use the official task creation command if available.
 
 ```bash
-ailovecode-workflow create-task "new-task"
+npx ailovecode-workflow create-task "new-task"
 ```
 
 If the official task creation command is unavailable, AI should manually create the same structure.

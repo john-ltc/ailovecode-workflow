@@ -24,7 +24,7 @@ The goal is to make AI-assisted development:
 Initialize the workflow in your project:
 
 ```bash
-ailovecode-workflow init
+npx ailovecode-workflow init
 ```
 
 This creates:
@@ -46,7 +46,7 @@ CLAUDE.md
 Update an existing workflow installation:
 
 ```bash
-ailovecode-workflow update
+npx ailovecode-workflow update
 ```
 
 This updates:
@@ -73,13 +73,13 @@ and any project-specific content outside the workflow-managed sections.
 Create a new task:
 
 ```bash
-ailovecode-workflow create-task "new-feature"
+npx ailovecode-workflow create-task "new-feature"
 ```
 
 Example:
 
 ```bash
-ailovecode-workflow create-task "add-user-profile"
+npx ailovecode-workflow create-task "add-user-profile"
 ```
 
 Result:
@@ -99,7 +99,7 @@ workflow/tasks/
 ### 1. Create Task
 
 ```bash
-ailovecode-workflow create-task "new-feature"
+npx ailovecode-workflow create-task "new-feature"
 ```
 
 ### 2. Write Requirements

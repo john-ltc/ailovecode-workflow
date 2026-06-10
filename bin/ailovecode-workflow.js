@@ -83,7 +83,7 @@ function init() {
       "Workflow already installed."
     );
     console.log(
-      "Use: ailovecode-workflow update"
+      "Use: npx ailovecode-workflow update"
     );
 
     updateInstructionFiles();
@@ -120,7 +120,7 @@ function update() {
       "workflow folder not found."
     );
     console.error(
-      "Run this first: ailovecode-workflow init"
+      "Run this first: npx ailovecode-workflow init"
     );
     process.exit(1);
   }
@@ -188,7 +188,7 @@ function createTask() {
     );
 
     console.error(
-      'Example: ailovecode-workflow create-task "add login page"'
+      'Example: npx ailovecode-workflow create-task "add login page"'
     );
 
     process.exit(1);
@@ -200,7 +200,7 @@ function createTask() {
     );
 
     console.error(
-      "Run this first: ailovecode-workflow init"
+      "Run this first: npx ailovecode-workflow init"
     );
 
     process.exit(1);
@@ -265,14 +265,14 @@ AILoveCode Workflow
 
 Usage:
 
-  ailovecode-workflow init
-  ailovecode-workflow update
-  ailovecode-workflow create-task "task name"
-  ailovecode-workflow version
+  npx ailovecode-workflow init
+  npx ailovecode-workflow update
+  npx ailovecode-workflow create-task "task name"
+  npx ailovecode-workflow version
 
 Aliases:
 
-  ailovecode-workflow install
+  npx ailovecode-workflow install
 `);
 }
 
