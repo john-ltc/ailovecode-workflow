@@ -21,7 +21,13 @@ The goal is to make AI-assisted development:
 
 ## Installation
 
-Initialize the workflow in your project:
+Install AILoveCode Workflow into your project:
+
+```bash
+npm install -D github:john-ltc/ailovecode-workflow
+```
+
+Initialize the workflow:
 
 ```bash
 npx ailovecode-workflow init
@@ -33,7 +39,7 @@ This creates:
 workflow/
 ├── guidelines.md
 ├── README.md
-├── tasks/
+└── tasks/
 
 AGENTS.md
 CLAUDE.md
@@ -43,7 +49,7 @@ CLAUDE.md
 
 ## Updating Workflow
 
-Update an existing workflow installation:
+Update the installed workflow files:
 
 ```bash
 npx ailovecode-workflow update
@@ -64,7 +70,7 @@ This preserves:
 workflow/tasks/
 ```
 
-and any project-specific content outside the workflow-managed sections.
+including all existing tasks and supporting materials.
 
 ---
 
@@ -94,15 +100,43 @@ workflow/tasks/
 
 ---
 
+## Check Version
+
+```bash
+npx ailovecode-workflow version
+```
+
+
+---
+
 ## Recommended Workflow
 
 ### 1. Create Task
 
+**Human → AI**
+
+Prompt:
+
+```text
+Create task "add-user-profile"
+```
+
+Expected outcome:
+
+* A new task folder is created
+* `task.md` is created
+* `implementation-plan.md` is created
+* `supporting-materials/` is created
+
+Implementation detail:
+
 ```bash
-npx ailovecode-workflow create-task "new-feature"
+npx ailovecode-workflow create-task "add-user-profile"
 ```
 
 ### 2. Write Requirements
+
+**Human**
 
 Write requirements in:
 
@@ -112,20 +146,77 @@ task.md
 
 ### 3. Understand the Task
 
+**Human → AI**
+
+Prompt:
+
 ```text
 Understand the task.
 ```
 
+Expected outcome:
+
+* Task summary
+* Key requirements
+* Clarifications
+* Ready for planning
+
 ### 4. Create Implementation Plan
+
+**Human → AI**
+
+Prompt:
 
 ```text
 Create an implementation plan for this task.
 ```
 
+Expected outcome:
+
+* Implementation plan
+* Architecture decisions
+* Testing approach
+* Milestones
+
 ### 5. Implement the Plan
+
+**Human → AI**
+
+Prompt:
 
 ```text
 Implement the plan.
+```
+
+Expected outcome:
+
+* Code changes
+* Progress updates
+* Development Checkpoint (when useful)
+* Completed implementation
+
+### Workflow Overview
+
+```text
+Human → AI
+  ↓
+Create Task
+
+Human
+  ↓
+Write task.md
+
+Human → AI
+  ↓
+Understand the task
+
+Human → AI
+  ↓
+Create implementation plan
+
+Human → AI
+  ↓
+Implement the plan
 ```
 
 ---
