@@ -91,7 +91,7 @@ Use `implementation-plan.md` for:
 
 Rules:
 
-* Create or update `implementation-plan.md` before implementation
+* Create or update `implementation-plan.md` only during the planning phase
 * Keep implementation notes concise and practical
 * Update the plan when meaningful decisions or progress happen
 * Keep task-related implementation details inside the task folder
@@ -100,21 +100,14 @@ Rules:
 
 ## implementation-plan.md Structure
 
-`implementation-plan.md` should follow this structure:
-
 ```md
 # Implementation Plan: Task Name
 
 ## Summary
-
 ## Goals
-
 ## Architecture
-
 ## Implementation Steps
-
 ## Testing
-
 ## Progress
 ```
 
@@ -123,26 +116,6 @@ Rules:
 ## Milestone Format
 
 Inside `Implementation Steps`, use milestones with checkboxes.
-
-Example:
-
-```md
-## Implementation Steps
-
-### Milestone 1: Example Milestone
-
-- [ ] Step 1
-- [ ] Step 2
-- [ ] Step 3
-
-Exit criteria:
-
-- [ ] Expected result
-
-Implemented in:
-
-- [path/to/file.php](path/to/file.php)
-```
 
 Rules:
 
@@ -172,24 +145,6 @@ Small fixes, minor refactoring, documentation updates, or short tasks do not req
 
 The goal is to provide checkpoints when they help the user validate progress, not to interrupt implementation unnecessarily.
 
-The checkpoint should include:
-
-### Completed
-
-What has been implemented.
-
-### Ready for Testing
-
-What the user can test immediately.
-
-### Remaining Work
-
-What is not completed yet.
-
-### Next Step
-
-Ask whether to continue implementation.
-
 ---
 
 ## supporting-materials
@@ -207,26 +162,28 @@ Examples:
 * reference materials
 * copied discussions
 
-Purpose:
-
-```txt
-Keep all task-related references together.
-```
-
 ---
 
 ## AI Workflow
 
-Before implementation:
+### Task Understanding Phase
 
 1. Read `workflow/guidelines.md`
 2. Read `task.md`
-3. Confirm task understanding before planning or implementation
-4. Read `implementation-plan.md` if it exists
-5. Create or update `implementation-plan.md`
-6. Implement changes
-7. If the feature reaches a meaningful runnable or testable state before completion, create a Development Checkpoint
-8. Continue implementation after user feedback or approval
+3. Provide a Task Understanding Response
+4. Remain in discussion and clarification mode until planning is explicitly requested
+
+### Planning Phase
+
+1. Create or update `implementation-plan.md` only when explicitly requested by the user
+2. Update the plan when meaningful decisions or changes occur
+
+### Implementation Phase
+
+1. Read `implementation-plan.md`
+2. Implement changes
+3. If the feature reaches a meaningful runnable or testable state before completion, create a Development Checkpoint
+4. Continue implementation after user feedback or approval
 
 ---
 
@@ -250,7 +207,35 @@ Any assumptions, risks, or unclear areas that may require confirmation.
 
 ### Next Step
 
-State that the AI is ready to create or update the implementation plan.
+State that the AI is ready for further discussion, clarification, or implementation planning.
+
+---
+
+## Planning Boundary
+
+After providing a Task Understanding Response, the AI should remain in discussion and clarification mode.
+
+The AI should not create, update, or modify `implementation-plan.md` unless the user explicitly requests planning.
+
+Examples of explicit planning requests:
+
+```text
+Create an implementation plan for this task.
+Update the implementation plan.
+Generate the implementation plan.
+Create a plan for this task.
+```
+
+During the discussion phase, the AI may:
+
+- answer questions
+- clarify requirements
+- discuss implementation approaches
+- identify risks
+- suggest considerations
+- review additional requirements provided by the user
+
+However, the AI should not create or modify `implementation-plan.md` until planning is explicitly requested.
 
 ---
 
