@@ -1,14 +1,63 @@
 # AILoveCode Workflow Guidelines
 
+## Workflow Awareness
+
+When the project contains AILoveCode Workflow files (such as `workflow/guidelines.md`, `AGENTS.md`, or `CLAUDE.md` referencing the workflow), AI should assume the workflow is active.
+
+Rules:
+
+* Do not ask whether AILoveCode Workflow exists if workflow files are already present.
+* Read `workflow/guidelines.md` before performing workflow-related actions.
+* Follow workflow instructions before applying generic AI behavior.
+* Workflow rules take precedence over default task management behavior.
+
+---
+
+## Command-First Policy
+
+When an official AILoveCode Workflow command exists for a workflow action, AI must attempt that command before using lower-level file operations.
+
+Examples:
+
+```bash
+npx ailovecode-workflow create-task "task-name"
+npx ailovecode-workflow update
+```
+
+Rules:
+
+* Prefer official workflow commands over manual file creation.
+* Prefer official workflow commands over direct file editing when a workflow command exists.
+* Manual file operations are fallback mechanisms.
+* Do not bypass official workflow commands without a valid reason.
+* If a command fails, explain the failure and proceed with the documented fallback process.
+
+---
+
 ## Task Creation
 
-When creating a new task, use the official task creation command if available.
+### Primary Method
+
+When creating a new task, AI must first attempt to use the official task creation command.
 
 ```bash
 npx ailovecode-workflow create-task "new-task"
 ```
 
-If the official task creation command is unavailable, AI should manually create the same structure.
+Rules:
+
+* AI must attempt the official command before performing manual task creation.
+* The command should be executed using the agent's command execution capability when available.
+* AI must not manually create task folders or files before attempting the official command.
+* AI should not ask for confirmation when the user explicitly requests task creation.
+
+### Fallback Method
+
+Manual task creation is allowed only when:
+
+* the command execution fails
+* the command is not installed or unavailable in the environment
+* the user explicitly requests manual creation
 
 Required structure:
 
@@ -125,6 +174,31 @@ Rules:
 * Add `Implemented in` section when implementation is completed
 * Keep milestones focused and practical
 
+Example:
+
+```md
+## Milestone 1 - Foundation
+
+### Goal
+
+Prepare the project structure.
+
+### Tasks
+
+- [ ] Create database migration
+- [ ] Create model
+- [ ] Create API endpoint
+
+### Exit Criteria
+
+API endpoint is functional.
+
+### Implemented In
+
+- app/Models/User.php
+- database/migrations/xxxx.php
+```
+
 ---
 
 ## Development Checkpoint
@@ -228,12 +302,12 @@ Create a plan for this task.
 
 During the discussion phase, the AI may:
 
-- answer questions
-- clarify requirements
-- discuss implementation approaches
-- identify risks
-- suggest considerations
-- review additional requirements provided by the user
+* answer questions
+* clarify requirements
+* discuss implementation approaches
+* identify risks
+* suggest considerations
+* review additional requirements provided by the user
 
 However, the AI should not create or modify `implementation-plan.md` until planning is explicitly requested.
 
@@ -255,5 +329,10 @@ However, the AI should not create or modify `implementation-plan.md` until plann
 * Keep changes focused
 * Avoid unnecessary refactoring
 * Do not modify workflow structure unless requested
-* Use the official workflow creation method when available
-* Workflow commands are optional conveniences, not hard requirements.
+* Use the official workflow commands when available
+* Follow the Command-First Policy
+* Read workflow guidelines before workflow actions
+* Respect task ownership boundaries
+* Do not modify `task.md` unless explicitly requested
+* Do not create or modify `implementation-plan.md` without explicit planning request
+* Workflow commands are the preferred execution path and should be attempted before manual alternatives
