@@ -108,3 +108,37 @@ Implement the plan
 ```
 
 For larger features, AI may provide a Development Checkpoint when there is something meaningful to test.
+
+---
+
+## Recommended task.md Template
+
+```md
+## Context
+
+## Request
+
+## Goal
+
+## Reference
+```
+
+Example:
+
+```md
+## Context
+
+User Management Module
+
+## Request
+
+Add the ability for administrators to deactivate user accounts.
+
+## Goal
+
+Administrators can deactivate users without permanently deleting their data.
+
+## Reference
+
+supporting-materials/requirements.png
+```

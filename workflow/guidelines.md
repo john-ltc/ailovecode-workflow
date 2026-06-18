@@ -72,7 +72,7 @@ Required structure:
 
 Rules:
 
-* `task.md` must be created empty
+* `task.md` should be created using the recommended task template
 * `implementation-plan.md` must be created empty
 * Do not pre-generate implementation plans during task creation
 * Human writes `task.md` first
@@ -124,6 +124,18 @@ Rules:
 * Do not modify `task.md` unless explicitly requested
 * Do not overwrite user intent
 * Do not silently rewrite requirements
+
+### Recommended Template
+
+```md
+## Context
+
+## Request
+
+## Goal
+
+## Reference
+```
 
 ---
 

@@ -11,6 +11,15 @@ const targetRoot = process.cwd();
 const sourceWorkflow = path.join(packageRoot, "workflow");
 const targetWorkflow = path.join(targetRoot, "workflow");
 
+const taskTemplate = `## Context
+
+## Request
+
+## Goal
+
+## Reference
+`;
+
 function copyDir(src, dest) {
   if (!fs.existsSync(src)) return;
 
@@ -227,7 +236,7 @@ function createTask() {
 
   fs.writeFileSync(
     path.join(taskPath, "task.md"),
-    "",
+    taskTemplate,
     "utf8"
   );
 

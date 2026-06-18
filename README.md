@@ -270,7 +270,8 @@ workflow/
 * The workflow is intentionally lightweight.
 * Tasks are the center of the workflow.
 * Keep documentation minimal and practical.
-* Workflow commands are optional conveniences, not hard requirements.
+* Workflow commands are the preferred workflow interface.
+* Manual file operations remain supported as a fallback.
 
 ---
 
