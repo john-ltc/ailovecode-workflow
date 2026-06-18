@@ -118,8 +118,6 @@ For larger features, AI may provide a Development Checkpoint when there is somet
 
 ## Request
 
-## Goal
-
 ## Reference
 ```
 
@@ -128,17 +126,13 @@ Example:
 ```md
 ## Context
 
-User Management Module
+I'm facing an issue where the Telegram preview displays unexpected spacing at the top when scrolling down on the campaign edit page.
 
 ## Request
 
-Add the ability for administrators to deactivate user accounts.
-
-## Goal
-
-Administrators can deactivate users without permanently deleting their data.
+Investigate the root cause and remove the extra spacing.
 
 ## Reference
 
-supporting-materials/requirements.png
+supporting-materials/image.png
 ```

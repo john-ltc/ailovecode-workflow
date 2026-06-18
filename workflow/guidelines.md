@@ -132,8 +132,6 @@ Rules:
 
 ## Request
 
-## Goal
-
 ## Reference
 ```
 

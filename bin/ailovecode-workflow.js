@@ -15,8 +15,6 @@ const taskTemplate = `## Context
 
 ## Request
 
-## Goal
-
 ## Reference
 `;
 
