@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { safeResolveWithin } from "./paths";
-import { parseTaskSections, TaskSections, updateTaskSections } from "./task-sections";
+import { buildTaskMarkdown, parseTaskSections, TaskSections, updateTaskSections } from "./task-sections";
 
 export interface WorkflowInfo {
   workflowPath: string;
@@ -24,6 +24,16 @@ export interface SupportingMaterial {
   name: string;
   relativePath: string;
   size: number;
+}
+
+export interface CreateTaskInput {
+  taskName: string;
+  sections?: TaskSections;
+}
+
+export interface CreatedTask {
+  id: string;
+  taskPath: string;
 }
 
 const taskIdPattern = /^\d{8}T\d{4}_[a-z0-9][a-z0-9-]*$/;
@@ -49,6 +59,69 @@ export function getWorkflowInfo(workflowPath: string): WorkflowInfo {
     workflowPath,
     tasksPath: getTasksPath(workflowPath),
     taskCount: tasks.length,
+  };
+}
+
+function toKebabCase(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function timestamp(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return (
+    now.getFullYear() +
+    pad(now.getMonth() + 1) +
+    pad(now.getDate()) +
+    "T" +
+    pad(now.getHours()) +
+    pad(now.getMinutes())
+  );
+}
+
+function normalizeTaskSections(sections?: TaskSections): TaskSections {
+  return {
+    Context: sections?.Context ?? "",
+    Request: sections?.Request ?? "",
+    Reference: sections?.Reference ?? "",
+  };
+}
+
+export function createWorkflowTask(workflowPath: string, input: CreateTaskInput): CreatedTask {
+  const taskName = input.taskName.trim();
+
+  if (!taskName) {
+    throw new Error("Please provide a task name.");
+  }
+
+  const slug = toKebabCase(taskName);
+
+  if (!slug) {
+    throw new Error("Task name must include at least one letter or number.");
+  }
+
+  const id = `${timestamp()}_${slug}`;
+  const taskPath = path.join(getTasksPath(workflowPath), id);
+
+  if (fs.existsSync(taskPath)) {
+    throw new Error("Task already exists. Try again in a minute or choose a different name.");
+  }
+
+  fs.mkdirSync(path.join(taskPath, "supporting-materials"), {
+    recursive: true,
+  });
+
+  fs.writeFileSync(path.join(taskPath, "task.md"), buildTaskMarkdown(normalizeTaskSections(input.sections)), "utf8");
+  fs.writeFileSync(path.join(taskPath, "implementation-plan.md"), "", "utf8");
+
+  return {
+    id,
+    taskPath,
   };
 }
 

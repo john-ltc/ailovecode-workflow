@@ -7,6 +7,7 @@ exports.isValidTaskId = isValidTaskId;
 exports.assertValidTaskId = assertValidTaskId;
 exports.getTasksPath = getTasksPath;
 exports.getWorkflowInfo = getWorkflowInfo;
+exports.createWorkflowTask = createWorkflowTask;
 exports.listTasks = listTasks;
 exports.getTaskPath = getTaskPath;
 exports.readTextFileIfExists = readTextFileIfExists;
@@ -40,6 +41,54 @@ function getWorkflowInfo(workflowPath) {
         workflowPath,
         tasksPath: getTasksPath(workflowPath),
         taskCount: tasks.length,
+    };
+}
+function toKebabCase(value) {
+    return value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+function timestamp() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return (now.getFullYear() +
+        pad(now.getMonth() + 1) +
+        pad(now.getDate()) +
+        "T" +
+        pad(now.getHours()) +
+        pad(now.getMinutes()));
+}
+function normalizeTaskSections(sections) {
+    return {
+        Context: sections?.Context ?? "",
+        Request: sections?.Request ?? "",
+        Reference: sections?.Reference ?? "",
+    };
+}
+function createWorkflowTask(workflowPath, input) {
+    const taskName = input.taskName.trim();
+    if (!taskName) {
+        throw new Error("Please provide a task name.");
+    }
+    const slug = toKebabCase(taskName);
+    if (!slug) {
+        throw new Error("Task name must include at least one letter or number.");
+    }
+    const id = `${timestamp()}_${slug}`;
+    const taskPath = path_1.default.join(getTasksPath(workflowPath), id);
+    if (fs_1.default.existsSync(taskPath)) {
+        throw new Error("Task already exists. Try again in a minute or choose a different name.");
+    }
+    fs_1.default.mkdirSync(path_1.default.join(taskPath, "supporting-materials"), {
+        recursive: true,
+    });
+    fs_1.default.writeFileSync(path_1.default.join(taskPath, "task.md"), (0, task_sections_1.buildTaskMarkdown)(normalizeTaskSections(input.sections)), "utf8");
+    fs_1.default.writeFileSync(path_1.default.join(taskPath, "implementation-plan.md"), "", "utf8");
+    return {
+        id,
+        taskPath,
     };
 }
 function listTasks(workflowPath) {

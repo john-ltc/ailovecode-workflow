@@ -3,6 +3,7 @@ import path from "path";
 import { ensureWorkflowExists } from "../workflow/paths";
 import { renderMarkdown } from "../workflow/markdown";
 import {
+  createWorkflowTask,
   listSupportingMaterials,
   listTasks,
   readGuidelines,
@@ -19,6 +20,7 @@ import {
   renderTaskDetail,
   renderTaskEdit,
   renderTaskList,
+  renderTaskNew,
 } from "./views";
 
 export interface StartWebServerOptions {
@@ -58,6 +60,35 @@ function createApp(workflowPath: string): express.Express {
 
   app.get("/tasks", (_req, res) => {
     res.send(renderTaskList(listTasks(workflowPath)));
+  });
+
+  app.get("/tasks/new", (_req, res) => {
+    res.send(renderTaskNew());
+  });
+
+  app.post("/tasks/new", (req, res) => {
+    const values = {
+      taskName: typeof req.body.taskName === "string" ? req.body.taskName : "",
+      Context: typeof req.body.Context === "string" ? req.body.Context : "",
+      Request: typeof req.body.Request === "string" ? req.body.Request : "",
+      Reference: typeof req.body.Reference === "string" ? req.body.Reference : "",
+    };
+
+    try {
+      const createdTask = createWorkflowTask(workflowPath, {
+        taskName: values.taskName,
+        sections: {
+          Context: values.Context,
+          Request: values.Request,
+          Reference: values.Reference,
+        },
+      });
+
+      res.redirect(`/tasks/${encodeURIComponent(createdTask.id)}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create task.";
+      res.status(400).send(renderTaskNew({ values, error: message }));
+    }
   });
 
   app.get("/tasks/:taskId", (req, res, next) => {

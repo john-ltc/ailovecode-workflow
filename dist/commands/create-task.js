@@ -6,25 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createTask = createTask;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-const file_operations_1 = require("../workflow/file-operations");
 const paths_1 = require("../workflow/paths");
-function toKebabCase(value) {
-    return value
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-}
-function timestamp() {
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
-    return (now.getFullYear() +
-        pad(now.getMonth() + 1) +
-        pad(now.getDate()) +
-        "T" +
-        pad(now.getHours()) +
-        pad(now.getMinutes()));
-}
+const tasks_1 = require("../workflow/tasks");
 function createTask(args) {
     const taskName = args.join(" ");
     if (!taskName) {
@@ -39,13 +22,13 @@ function createTask(args) {
         console.error("Run this first: npx ailovecode-workflow init");
         process.exit(1);
     }
-    const folderName = `${timestamp()}_${toKebabCase(taskName)}`;
-    const taskPath = path_1.default.join(targetWorkflow, "tasks", folderName);
-    fs_1.default.mkdirSync(path_1.default.join(taskPath, "supporting-materials"), {
-        recursive: true,
-    });
-    fs_1.default.writeFileSync(path_1.default.join(taskPath, "task.md"), file_operations_1.taskTemplate, "utf8");
-    fs_1.default.writeFileSync(path_1.default.join(taskPath, "implementation-plan.md"), "", "utf8");
-    console.log("Task created:");
-    console.log(path_1.default.relative(targetRoot, taskPath));
+    try {
+        const createdTask = (0, tasks_1.createWorkflowTask)(targetWorkflow, { taskName });
+        console.log("Task created:");
+        console.log(path_1.default.relative(targetRoot, createdTask.taskPath));
+    }
+    catch (error) {
+        console.error(error instanceof Error ? error.message : "Unable to create task.");
+        process.exit(1);
+    }
 }

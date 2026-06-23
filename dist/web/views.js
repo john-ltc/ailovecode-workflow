@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.escapeHtml = escapeHtml;
 exports.renderDashboard = renderDashboard;
 exports.renderTaskList = renderTaskList;
+exports.renderTaskNew = renderTaskNew;
 exports.renderTaskDetail = renderTaskDetail;
 exports.renderTaskEdit = renderTaskEdit;
 exports.renderGuidelines = renderGuidelines;
@@ -120,7 +121,10 @@ function taskListSearchText(task) {
 function taskListEmptyState() {
     return `<div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-600">
     <p>No tasks found in <span class="font-mono">workflow/tasks/</span>.</p>
-    <p class="mt-2">Create one with <code class="rounded bg-white px-1.5 py-0.5 font-mono text-xs text-slate-900">npx ailovecode-workflow create-task &quot;new-task&quot;</code>.</p>
+    <div class="mt-4">
+      <a class="inline-flex rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800" href="/tasks/new">Create New Task</a>
+    </div>
+    <p class="mt-3 text-xs text-slate-500">CLI option: <code class="rounded bg-white px-1.5 py-0.5 font-mono text-xs text-slate-900">npx ailovecode-workflow create-task &quot;new-task&quot;</code></p>
   </div>`;
 }
 function taskListSearchControls(taskCount) {
@@ -207,7 +211,7 @@ function renderDashboard(workflowInfo, tasks) {
 
       <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
         ${card(`<div class="mb-4 flex items-center justify-between"><h2 class="text-lg font-semibold text-slate-950">Recent Tasks</h2><a class="text-sm font-medium text-blue-700 hover:text-blue-900" href="/tasks">View all</a></div>${taskListItems(tasks, { limit: 5, compact: true })}`)}
-        ${card(`<h2 class="text-lg font-semibold text-slate-950">Quick Links</h2><div class="mt-4 grid gap-3"><a class="rounded-lg bg-blue-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-blue-800" href="/tasks">Open Task List</a><a class="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/guidelines">View Guidelines</a></div>`)}
+        ${card(`<h2 class="text-lg font-semibold text-slate-950">Quick Links</h2><div class="mt-4 grid gap-3"><a class="rounded-lg bg-blue-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-blue-800" href="/tasks/new">New Task</a><a class="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/tasks">Open Task List</a><a class="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/guidelines">View Guidelines</a></div>`)}
       </div>
     </div>`);
 }
@@ -216,12 +220,51 @@ function renderTaskList(tasks) {
         ? `${taskListSearchControls(tasks.length)}${taskListItems(tasks, { searchable: true })}${taskListNoResultsState()}`
         : taskListEmptyState();
     return pageLayout("Tasks", `<div class="space-y-6">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight text-slate-950">Tasks</h1>
-        <p class="mt-2 text-slate-600">Tasks are loaded from <span class="font-mono">workflow/tasks/</span>.</p>
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-950">Tasks</h1>
+          <p class="mt-2 text-slate-600">Tasks are loaded from <span class="font-mono">workflow/tasks/</span>.</p>
+        </div>
+        <a class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800" href="/tasks/new">New Task</a>
       </div>
       ${card(taskListContent)}
       ${tasks.length > 0 ? taskListSearchScript() : ""}
+    </div>`);
+}
+function normalizeTaskCreateFormValues(values) {
+    return {
+        taskName: values?.taskName ?? "",
+        Context: values?.Context ?? "",
+        Request: values?.Request ?? "",
+        Reference: values?.Reference ?? "",
+    };
+}
+function formError(message) {
+    if (!message)
+        return "";
+    return `<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">${escapeHtml(message)}</div>`;
+}
+function renderTaskNew(options = {}) {
+    const values = normalizeTaskCreateFormValues(options.values);
+    return pageLayout("New Task", `<div class="space-y-6">
+      <div>
+        <a class="text-sm font-medium text-blue-700 hover:text-blue-900" href="/tasks">← Back to tasks</a>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-950">New Task</h1>
+        <p class="mt-2 text-slate-600">Create a file-based workflow task with the standard task.md sections.</p>
+      </div>
+
+      ${formError(options.error)}
+
+      ${card(`<form method="post" action="/tasks/new" class="space-y-6">
+        ${taskNameInput(values.taskName)}
+        ${sectionTextarea("Context", values.Context)}
+        ${sectionTextarea("Request", values.Request)}
+        ${sectionTextarea("Reference", values.Reference)}
+        <div class="flex gap-3">
+          <button class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800" type="submit">Create task</button>
+          <a class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/tasks">Cancel</a>
+        </div>
+      </form>`)}
     </div>`);
 }
 function renderTaskDetail(options) {
@@ -292,6 +335,13 @@ function renderTaskEdit(options) {
         </div>
       </form>`)}
     </div>`);
+}
+function taskNameInput(value) {
+    return `<label class="block">
+    <span class="text-sm font-semibold text-slate-800">Task name</span>
+    <input class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" name="taskName" type="text" value="${escapeHtml(value)}" placeholder="add login page" required autofocus>
+    <span class="mt-2 block text-xs text-slate-500">Used to generate the task folder name.</span>
+  </label>`;
 }
 function sectionTextarea(sectionName, value) {
     return `<label class="block">

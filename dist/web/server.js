@@ -32,6 +32,32 @@ function createApp(workflowPath) {
     app.get("/tasks", (_req, res) => {
         res.send((0, views_1.renderTaskList)((0, tasks_1.listTasks)(workflowPath)));
     });
+    app.get("/tasks/new", (_req, res) => {
+        res.send((0, views_1.renderTaskNew)());
+    });
+    app.post("/tasks/new", (req, res) => {
+        const values = {
+            taskName: typeof req.body.taskName === "string" ? req.body.taskName : "",
+            Context: typeof req.body.Context === "string" ? req.body.Context : "",
+            Request: typeof req.body.Request === "string" ? req.body.Request : "",
+            Reference: typeof req.body.Reference === "string" ? req.body.Reference : "",
+        };
+        try {
+            const createdTask = (0, tasks_1.createWorkflowTask)(workflowPath, {
+                taskName: values.taskName,
+                sections: {
+                    Context: values.Context,
+                    Request: values.Request,
+                    Reference: values.Reference,
+                },
+            });
+            res.redirect(`/tasks/${encodeURIComponent(createdTask.id)}`);
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : "Unable to create task.";
+            res.status(400).send((0, views_1.renderTaskNew)({ values, error: message }));
+        }
+    });
     app.get("/tasks/:taskId", (req, res, next) => {
         try {
             const task = getTaskSummary(workflowPath, req.params.taskId);
