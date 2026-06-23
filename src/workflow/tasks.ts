@@ -14,6 +14,10 @@ export interface TaskSummary {
   name: string;
   createdLabel: string;
   taskPath: string;
+  requestPreview: string;
+  hasTaskMarkdown: boolean;
+  hasImplementationPlan: boolean;
+  supportingMaterialCount: number;
 }
 
 export interface SupportingMaterial {
@@ -63,15 +67,76 @@ export function listTasks(workflowPath: string): TaskSummary[] {
       const id = entry.name;
       const name = id.replace(/^\d{8}T\d{4}_/, "").replace(/-/g, " ");
       const createdLabel = formatTaskTimestamp(id.slice(0, 13));
+      const taskPath = path.join(tasksPath, id);
+      const taskMarkdown = readTextFileIfExists(path.join(taskPath, "task.md"));
+      const implementationPlan = readTextFileIfExists(path.join(taskPath, "implementation-plan.md"));
+      const sections = parseTaskSections(taskMarkdown);
 
       return {
         id,
         name,
         createdLabel,
-        taskPath: path.join(tasksPath, id),
+        taskPath,
+        requestPreview: extractTaskPreview(sections),
+        hasTaskMarkdown: taskMarkdown.trim().length > 0,
+        hasImplementationPlan: implementationPlan.trim().length > 0,
+        supportingMaterialCount: countSupportingMaterialFiles(path.join(taskPath, "supporting-materials")),
       };
     })
     .sort((a, b) => b.id.localeCompare(a.id));
+}
+
+function extractTaskPreview(sections: TaskSections): string {
+  return firstMeaningfulLine(sections.Request) || firstMeaningfulLine(sections.Context);
+}
+
+function firstMeaningfulLine(value: string): string {
+  const line = value
+    .split(/\r?\n/)
+    .map((candidate) => candidate.trim())
+    .find((candidate) => candidate.length > 0);
+
+  if (!line) return "";
+
+  return truncatePreview(stripMarkdownMarkers(line));
+}
+
+function stripMarkdownMarkers(value: string): string {
+  return value
+    .replace(/^[-*+]\s+/, "")
+    .replace(/^#+\s+/, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .trim();
+}
+
+function truncatePreview(value: string): string {
+  const maxLength = 160;
+
+  if (value.length <= maxLength) return value;
+
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function countSupportingMaterialFiles(materialsPath: string): number {
+  if (!fs.existsSync(materialsPath)) {
+    return 0;
+  }
+
+  return fs.readdirSync(materialsPath, { withFileTypes: true }).reduce((count, entry) => {
+    const entryPath = path.join(materialsPath, entry.name);
+
+    if (entry.isDirectory()) {
+      return count + countSupportingMaterialFiles(entryPath);
+    }
+
+    if (entry.isFile()) {
+      return count + 1;
+    }
+
+    return count;
+  }, 0);
 }
 
 function formatTaskTimestamp(timestamp: string): string {
@@ -96,7 +161,7 @@ export function getTaskPath(workflowPath: string, taskId: string): string {
 }
 
 export function readTextFileIfExists(filePath: string): string {
-  if (!fs.existsSync(filePath)) {
+  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
     return "";
   }
 

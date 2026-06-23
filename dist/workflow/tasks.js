@@ -55,14 +55,64 @@ function listTasks(workflowPath) {
         const id = entry.name;
         const name = id.replace(/^\d{8}T\d{4}_/, "").replace(/-/g, " ");
         const createdLabel = formatTaskTimestamp(id.slice(0, 13));
+        const taskPath = path_1.default.join(tasksPath, id);
+        const taskMarkdown = readTextFileIfExists(path_1.default.join(taskPath, "task.md"));
+        const implementationPlan = readTextFileIfExists(path_1.default.join(taskPath, "implementation-plan.md"));
+        const sections = (0, task_sections_1.parseTaskSections)(taskMarkdown);
         return {
             id,
             name,
             createdLabel,
-            taskPath: path_1.default.join(tasksPath, id),
+            taskPath,
+            requestPreview: extractTaskPreview(sections),
+            hasTaskMarkdown: taskMarkdown.trim().length > 0,
+            hasImplementationPlan: implementationPlan.trim().length > 0,
+            supportingMaterialCount: countSupportingMaterialFiles(path_1.default.join(taskPath, "supporting-materials")),
         };
     })
         .sort((a, b) => b.id.localeCompare(a.id));
+}
+function extractTaskPreview(sections) {
+    return firstMeaningfulLine(sections.Request) || firstMeaningfulLine(sections.Context);
+}
+function firstMeaningfulLine(value) {
+    const line = value
+        .split(/\r?\n/)
+        .map((candidate) => candidate.trim())
+        .find((candidate) => candidate.length > 0);
+    if (!line)
+        return "";
+    return truncatePreview(stripMarkdownMarkers(line));
+}
+function stripMarkdownMarkers(value) {
+    return value
+        .replace(/^[-*+]\s+/, "")
+        .replace(/^#+\s+/, "")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/\*\*([^*]+)\*\*/g, "$1")
+        .replace(/__([^_]+)__/g, "$1")
+        .trim();
+}
+function truncatePreview(value) {
+    const maxLength = 160;
+    if (value.length <= maxLength)
+        return value;
+    return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+function countSupportingMaterialFiles(materialsPath) {
+    if (!fs_1.default.existsSync(materialsPath)) {
+        return 0;
+    }
+    return fs_1.default.readdirSync(materialsPath, { withFileTypes: true }).reduce((count, entry) => {
+        const entryPath = path_1.default.join(materialsPath, entry.name);
+        if (entry.isDirectory()) {
+            return count + countSupportingMaterialFiles(entryPath);
+        }
+        if (entry.isFile()) {
+            return count + 1;
+        }
+        return count;
+    }, 0);
 }
 function formatTaskTimestamp(timestamp) {
     const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})$/.exec(timestamp);
@@ -80,7 +130,7 @@ function getTaskPath(workflowPath, taskId) {
     return taskPath;
 }
 function readTextFileIfExists(filePath) {
-    if (!fs_1.default.existsSync(filePath)) {
+    if (!fs_1.default.existsSync(filePath) || !fs_1.default.statSync(filePath).isFile()) {
         return "";
     }
     return fs_1.default.readFileSync(filePath, "utf8");
