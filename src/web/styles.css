@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .prose-like {
+    @apply max-w-none text-sm leading-7 text-slate-700;
+  }
+
+  .prose-like h1 {
+    @apply mb-4 mt-6 text-2xl font-bold text-slate-950;
+  }
+
+  .prose-like h2 {
+    @apply mb-3 mt-6 text-xl font-semibold text-slate-950;
+  }
+
+  .prose-like h3 {
+    @apply mb-2 mt-5 text-lg font-semibold text-slate-950;
+  }
+
+  .prose-like p {
+    @apply my-3;
+  }
+
+  .prose-like ul {
+    @apply my-3 list-disc pl-6;
+  }
+
+  .prose-like ol {
+    @apply my-3 list-decimal pl-6;
+  }
+
+  .prose-like li {
+    @apply my-1;
+  }
+
+  .prose-like a {
+    @apply font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900;
+  }
+
+  .prose-like code {
+    @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-xs text-slate-900;
+  }
+
+  .prose-like pre {
+    @apply my-4 overflow-auto rounded-lg bg-slate-950 p-4 text-slate-100;
+  }
+
+  .prose-like pre code {
+    @apply bg-transparent p-0 text-slate-100;
+  }
+
+  .prose-like blockquote {
+    @apply my-4 border-l-4 border-slate-300 pl-4 italic text-slate-600;
+  }
+
+  .prose-like table {
+    @apply my-4 w-full border-collapse text-left text-sm;
+  }
+
+  .prose-like th,
+  .prose-like td {
+    @apply border border-slate-200 px-3 py-2;
+  }
+}

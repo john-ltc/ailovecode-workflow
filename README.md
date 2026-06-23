@@ -100,6 +100,35 @@ workflow/tasks/
 
 ---
 
+## Local WebUI
+
+Start the embedded local WebUI:
+
+```bash
+npx ailovecode-workflow serve
+```
+
+The WebUI runs locally and prints the URL after startup:
+
+```txt
+AILoveCode Workflow WebUI running at:
+http://localhost:4111
+```
+
+Phase 1 WebUI features:
+
+* dashboard
+* task list
+* task detail
+* section-based `task.md` editing for Context, Request, and Reference
+* read-only `implementation-plan.md` viewing
+* supporting material file links
+* guidelines viewer
+
+The WebUI remains file-based, local-first, and AI-independent.
+
+---
+
 ## Check Version
 
 ```bash
