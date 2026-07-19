@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design 5C · Flow Command — AILoveCode Workflow</title>
+<style>
+  :root {
+    --bg: #111827; --bg-deep: #0d1420; --card: #162131; --card-2: #1b2839;
+    --line: #24334a; --line-soft: #1d2a3d;
+    --ink: #f8fafc; --ink-2: #c3cbd8; --ink-3: #8b96a8;
+    --heart: #ef4444; --heart-soft: #3a1d26; --heart-glow: rgba(239,68,68,.35);
+    --green: #34d399; --green-soft: #143327;
+    --blue: #60a5fa; --amber: #fbbf24; --amber-soft: #33290f;
+    --sans: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    --shadow: 0 24px 70px rgba(5,10,20,.6);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 13.5px/1.65 var(--sans); overflow: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: none; }
+  :focus-visible { outline: 2px solid var(--heart); outline-offset: 2px; }
+  ::selection { background: rgba(239,68,68,.3); }
+  ::-webkit-scrollbar { width: 9px; }
+  ::-webkit-scrollbar-thumb { background: #2b3b55; border-radius: 99px; border: 2px solid var(--bg); }
+
+  .app { height: 100vh; display: grid; grid-template-rows: 52px minmax(0,1fr) 30px; }
+
+  /* ---------- top ---------- */
+  .top { display: flex; align-items: center; gap: 14px; padding: 0 18px; border-bottom: 1px solid var(--line-soft); background: rgba(17,24,39,.8); backdrop-filter: blur(12px); }
+  .logo { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14.5px; }
+  .logo .heart { color: var(--heart); filter: drop-shadow(0 0 8px var(--heart-glow)); }
+  .logo .thin { color: var(--ink-3); font-weight: 500; }
+  .crumb { font: 11px var(--mono); color: var(--ink-3); }
+  .crumb b { color: var(--ink-2); font-weight: 600; }
+  .top-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .palette-btn { display: flex; align-items: center; gap: 8px; height: 31px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink-3); font-size: 11.5px; }
+  .palette-btn:hover { color: var(--ink-2); border-color: #35496b; }
+  kbd { font: 9.5px var(--mono); color: var(--ink-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg-deep); }
+
+  /* ---------- main ---------- */
+  .main { min-height: 0; overflow-y: auto; }
+  .col { width: min(780px, 100%); margin: 0 auto; padding: 34px 22px 70px; }
+  .view { display: none; } .view.active { display: block; animation: rise .18s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; } }
+
+  /* list view */
+  .head-row { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .head-row h1 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+  .head-row .n { font: 11px var(--mono); color: var(--ink-3); }
+  .head-row .new { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; border-radius: 9px; padding: 7px 14px; font-size: 12px; font-weight: 700; background: var(--heart); color: #fff; box-shadow: 0 4px 16px var(--heart-glow); }
+  .head-row .new:hover { filter: brightness(1.1); }
+  .sub-note { color: var(--ink-3); font-size: 12px; margin-bottom: 18px; }
+  .sub-note code { font: 11px var(--mono); color: #fda4af; background: var(--bg-deep); border: 1px solid var(--line-soft); border-radius: 5px; padding: 1px 6px; }
+
+  .filter-line { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px; }
+  .filter-line .ic { color: var(--ink-3); font-size: 13px; }
+  .filter-line input { flex: 1; background: none; border: none; outline: none; color: var(--ink); font-size: 13.5px; }
+  .filter-line input::placeholder { color: #55627a; }
+
+  .row { display: grid; grid-template-columns: 10px minmax(0,1fr) 130px 90px 56px; gap: 14px; align-items: center; width: 100%; text-align: left; padding: 13px 10px; border-radius: 10px; border: 1px solid transparent; }
+  .row:hover { background: var(--card); }
+  .row.sel { background: var(--card); border-color: var(--line); box-shadow: inset 2.5px 0 0 var(--heart); }
+  .row .dot { width: 8px; height: 8px; border-radius: 50%; background: #47566e; }
+  .row.active-task .dot { background: var(--heart); box-shadow: 0 0 0 3px rgba(239,68,68,.18); }
+  .row.done-task .dot { background: var(--green); }
+  .row .nm { font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .fid { display: block; font: 9.5px var(--mono); color: #55627a; font-weight: 400; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .prog { display: flex; align-items: center; gap: 8px; }
+  .row .bar { flex: 1; height: 4px; border-radius: 99px; background: var(--bg-deep); overflow: hidden; }
+  .row .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--heart), #f87171); }
+  .row.done-task .bar i { background: var(--green); }
+  .row .pctxt { font: 9.5px var(--mono); color: var(--ink-3); width: 30px; text-align: right; }
+  .row .when { font: 10px var(--mono); color: var(--ink-3); text-align: right; }
+  .row .open-hint { font: 9.5px var(--mono); color: #55627a; text-align: right; opacity: 0; }
+  .row.sel .open-hint { opacity: 1; }
+  .no-match { padding: 26px 10px; color: var(--ink-3); font-style: italic; }
+
+  /* detail view */
+  .back-line { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 12px; color: var(--ink-3); }
+  .back-line button { color: var(--ink-3); display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line-soft); border-radius: 8px; }
+  .back-line button:hover { color: var(--ink-2); border-color: var(--line); }
+  .d-title { font-size: 22px; font-weight: 800; letter-spacing: -.02em; line-height: 1.3; }
+  .d-fid { font: 10.5px var(--mono); color: var(--ink-3); margin-top: 5px; word-break: break-all; }
+  .badges { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 13px; }
+  .bdg { padding: 3px 10px; border-radius: 99px; font-size: 10px; font-weight: 750; }
+  .bdg.red { background: var(--heart-soft); color: #fca5a5; }
+  .bdg.green { background: var(--green-soft); color: var(--green); }
+  .bdg.amber { background: var(--amber-soft); color: var(--amber); }
+  .bdg.grey { background: var(--card-2); color: var(--ink-2); }
+
+  .doc-sec { margin-top: 28px; }
+  .doc-sec > h2 { display: flex; align-items: baseline; gap: 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); margin-bottom: 12px; }
+  .doc-sec > h2 .own { font-size: 8.5px; padding: 1px 7px; border-radius: 99px; letter-spacing: .04em; }
+  .own.you { background: var(--amber-soft); color: var(--amber); }
+  .own.agent { background: rgba(96,165,250,.12); color: var(--blue); }
+  .md { color: var(--ink-2); font-size: 13px; }
+  .md p { margin-bottom: 9px; }
+  .md ul { padding-left: 19px; display: grid; gap: 4px; margin-bottom: 9px; }
+  .md pre { margin: 9px 0; padding: 11px 13px; border-radius: 9px; overflow-x: auto; background: var(--bg-deep); border: 1px solid var(--line-soft); color: #9fb0c8; font: 10.5px/1.6 var(--mono); }
+  .md code { font: 11.5px var(--mono); background: var(--bg-deep); border: 1px solid var(--line-soft); border-radius: 5px; padding: 1px 6px; color: #fda4af; }
+  .placeholder { color: #55627a; font-style: italic; }
+
+  .plan-line { display: grid; grid-template-columns: 17px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 6px 0; font-size: 12.5px; color: var(--ink-2); border-bottom: 1px dashed var(--line-soft); }
+  .plan-line:last-child { border-bottom: none; }
+  .plan-line .bx { width: 14px; height: 14px; border: 1px solid #3b4d6b; border-radius: 4px; display: grid; place-items: center; font-size: 9px; line-height: 1; color: var(--green); }
+  .plan-line.done .bx { background: var(--green-soft); border-color: rgba(52,211,153,.5); }
+  .plan-line.done .t { color: var(--ink-3); }
+  .plan-line .c { font: 9.5px var(--mono); color: var(--ink-3); }
+  .plan-meter { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .plan-meter .bar { flex: 1; height: 5px; border-radius: 99px; background: var(--bg-deep); overflow: hidden; }
+  .plan-meter .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--heart), #f87171); }
+  .plan-meter span { font: 10px var(--mono); color: var(--ink-3); }
+
+  .mat-line { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line-soft); font-size: 12.5px; }
+  .mat-line .sz { margin-left: auto; font: 10px var(--mono); color: var(--ink-3); }
+  .mat-line .acts { display: flex; gap: 12px; font-size: 11px; font-weight: 700; }
+  .mat-line .acts a { color: #fda4af; } .mat-line .acts a:hover { text-decoration: underline; }
+
+  /* ---------- status bar ---------- */
+  .status { display: flex; align-items: center; gap: 18px; padding: 0 16px; border-top: 1px solid var(--line-soft); background: var(--bg-deep); font: 10px var(--mono); color: var(--ink-3); }
+  .status .seg { display: flex; align-items: center; gap: 6px; }
+  .status .heart { color: var(--heart); }
+  .status .g { color: var(--green); }
+  .status .keys { margin-left: auto; display: flex; gap: 12px; }
+  .status .keys span b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- command palette ---------- */
+  .pal-scrim { display: none; position: fixed; inset: 0; background: rgba(5,10,18,.65); backdrop-filter: blur(3px); z-index: 60; }
+  .pal-scrim.open { display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 0; }
+  .palette { width: min(560px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .pal-input { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
+  .pal-input .heart { color: var(--heart); }
+  .pal-input input { flex: 1; background: none; border: none; outline: none; color: var(--ink); font-size: 14px; }
+  .pal-input input::placeholder { color: #55627a; }
+  .pal-list { max-height: 320px; overflow-y: auto; padding: 6px; }
+  .pal-group { padding: 8px 10px 3px; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #55627a; }
+  .pal-item { width: 100%; display: grid; grid-template-columns: 22px minmax(0,1fr) auto; gap: 10px; align-items: center; text-align: left; padding: 9px 10px; border-radius: 9px; font-size: 12.5px; color: var(--ink-2); }
+  .pal-item .ic { color: var(--ink-3); font-size: 13px; text-align: center; }
+  .pal-item .meta { font: 9.5px var(--mono); color: #55627a; }
+  .pal-item.sel { background: var(--heart-soft); color: var(--ink); }
+  .pal-item.sel .ic { color: #fca5a5; }
+  .pal-empty { padding: 20px 12px; color: var(--ink-3); font-style: italic; font-size: 12px; }
+  .pal-foot { display: flex; gap: 14px; padding: 9px 16px; border-top: 1px solid var(--line-soft); font: 9.5px var(--mono); color: #55627a; }
+
+  .toast { position: fixed; left: 50%; bottom: 44px; z-index: 90; transform: translate(-50%,14px); padding: 10px 15px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: .2s; font-size: 11.5px; }
+  .toast.show { opacity: 1; transform: translate(-50%,0); }
+
+  @media (max-width: 640px) {
+    .row { grid-template-columns: 10px minmax(0,1fr) 60px; }
+    .row .prog, .row .open-hint { display: none; }
+    .status .keys { display: none; }
+    .crumb { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="logo" href="#">AI<span class="heart">♥</span>LoveCode <span class="thin">Flow</span></a>
+    <span class="crumb" id="crumb">workflow-dev / <b>tasks</b></span>
+    <div class="top-right">
+      <button class="palette-btn" onclick="openPalette()">Command <kbd>Ctrl</kbd><kbd>K</kbd></button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- LIST -->
+    <section class="view active col" id="view-list">
+      <div class="head-row">
+        <h1>Tasks</h1><span class="n" id="countN"></span>
+        <button class="new" onclick="notify('Demo: creates task.md + empty plan + supporting-materials/')">＋ New task <kbd style="border-color:rgba(255,255,255,.35);color:#fff;background:transparent">N</kbd></button>
+      </div>
+      <div class="sub-note">A keyboard-first index over <code>workflow/tasks/</code> — nothing here is a database row; every task is a folder.</div>
+      <div class="filter-line">
+        <span class="ic">⌕</span>
+        <input id="filter" placeholder="Filter tasks…  ( / to focus · j k to move · ↵ to open )">
+      </div>
+      <div id="rows"></div>
+    </section>
+
+    <!-- DETAIL -->
+    <section class="view col" id="view-detail">
+      <div class="back-line">
+        <button onclick="showList()">← Back <kbd>Esc</kbd></button>
+        <span id="d-pos"></span>
+      </div>
+      <h1 class="d-title" id="d-name"></h1>
+      <div class="d-fid" id="d-fid"></div>
+      <div class="badges" id="d-badges"></div>
+      <div id="d-body"></div>
+    </section>
+  </main>
+
+  <footer class="status">
+    <span class="seg"><span class="heart">♥</span> workflow-dev · main</span>
+    <span class="seg" id="statTasks"></span>
+    <span class="seg"><span class="g">●</span> agent idle — planning boundary respected</span>
+    <span class="keys">
+      <span><b>j k</b> move</span><span><b>↵</b> open</span><span><b>/</b> filter</span><span><b>⌃K</b> palette</span><span><b>Esc</b> back</span>
+    </span>
+  </footer>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="pal-scrim" id="palScrim">
+  <div class="palette" role="dialog" aria-label="Command palette">
+    <div class="pal-input"><span class="heart">♥</span><input id="palInput" placeholder="Type a command or task name…"></div>
+    <div class="pal-list" id="palList"></div>
+    <div class="pal-foot"><span>↑↓ navigate</span><span>↵ run</span><span>esc close</span></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* REAL DATA — workflow-dev/workflow/tasks/, captured 2026-07-13 */
+const TASKS = [
+  { id: "20260712T2341_webui-design-claude", name: "WebUI Design Claude", when: "Jul 12", active: true,
+    context: `<p>Currently created webui for ailovecode-workflow, but need to have better ui</p>`,
+    request: `<p>Create 3 ui that you think is best for this project.</p><ul><li>Create as 3 separate html to demo the design for the webui.</li><li>Create as html with best ui/ux.</li><li>Create under <code>webui-design\\claude</code> folder.</li></ul>`,
+    reference: null,
+    milestones: [["Design demos (3 HTML)", 3, 3], ["Claude-style design", 1, 1], ["Brand + real data — agent workspace", 3, 3], ["Variations 5A · 5B · 5C", 3, 3]],
+    materials: [] },
+  { id: "20260712T2335_webui-design-codex", name: "WebUI Design Codex", when: "Jul 12", active: true,
+    context: `<p>Currently created webui for ailovecode-workflow, but need to have better ui</p>`,
+    request: `<p>Create 3 ui that you think is best for this project. Create as 3 separate html to demo the design for the webui, under <code>webui-design\\codex</code>.</p>`,
+    reference: null,
+    milestones: [["Product Mapping", 3, 3], ["Standalone Concepts", 4, 4], ["Validation", 4, 4], ["Codex-Native Workspace", 4, 4], ["Brand and Real Data Refinement", 0, 4]],
+    materials: [] },
+  { id: "20260623T0645_webui-supporting-materials-management", name: "WebUI Supporting Materials Management", when: "Jun 23", active: false,
+    context: `<p>Supporting materials can only be viewed when files already exist. Users still need the filesystem to add reference documents, screenshots, diagrams, and notes.</p>`,
+    request: `<p>Manage supporting materials from the WebUI: upload, view, download, remove, multiple files. Files stay inside <code>supporting-materials/</code>.</p>`,
+    reference: `<pre>workflow/tasks/
+└── YYYYMMDDTHHMM_task-name/
+    ├── task.md
+    ├── implementation-plan.md
+    └── supporting-materials/</pre>`,
+    milestones: [["Upload dependency (multer)", 3, 3], ["Safe file operations", 5, 5], ["Upload/delete routes", 4, 4], ["Materials UI", 3, 3], ["Create-task uploads", 3, 3], ["Build and verify", 3, 3]],
+    materials: [{ name: "image.png", size: "41.5 KB" }] },
+  { id: "20260623T0606_webui-task-creation", name: "WebUI Task Creation", when: "Jun 23", active: false,
+    context: `<p>Creating a task still requires the CLI: <code>npx ailovecode-workflow create-task "task-name"</code> — a disconnect from the WebUI.</p>`,
+    request: `<p>Integrate task creation into the WebUI: creation workflow, inputs, naming, folder generation, validation, navigation after creation.</p>`,
+    reference: `<p>task.md is human-owned; implementation-plan.md is AI-owned.</p>`,
+    milestones: [["Shared creation logic", 3, 3], ["CLI uses shared logic", 2, 2], ["New Task form", 3, 3], ["Create routes", 3, 3], ["Build and verify", 2, 2]],
+    materials: [] },
+  { id: "20260623T0402_embedded-webui-task-list-improvements", name: "Embedded WebUI Task List Improvements", when: "Jun 23", active: false,
+    context: `<p>After creating multiple tasks, the Task List feels basic and may become harder to use as the number of tasks grows.</p>`,
+    request: `<p>Improve task discovery, navigation, information visibility, and scalability — while staying file-based, local-first, and lightweight.</p>`,
+    reference: `<p>A better read-only index over workflow/tasks/ — not a project management platform.</p>`,
+    milestones: [["Derived summary fields", 3, 3], ["Richer rows", 2, 2], ["Search/filter UX", 2, 2], ["Polish + build", 2, 2]],
+    materials: [] },
+  { id: "20260622T1522_embedded-webui-file-mode", name: "Embedded WebUI File Mode", when: "Jun 22", active: false,
+    context: `<p>AILoveCode Workflow is CLI-based today. We want an embedded local WebUI — lightweight, local-first, file-based; no database, auth, or cloud.</p>`,
+    request: `<p>Implement <code>npx ailovecode-workflow serve</code> — TypeScript, Express, Tailwind, server-rendered. Dashboard, task list, detail, task.md editing, read-only plan, materials, guidelines.</p>`,
+    reference: `<pre>workflow/
+├── guidelines.md
+└── tasks/YYYYMMDDTHHMM_task-name/</pre>`,
+    milestones: [["TypeScript CLI foundation", 3, 3], ["File-based services", 5, 5], ["Express server + routes", 3, 3], ["Views + Tailwind", 3, 3], ["Validation + packaging", 3, 3]],
+    materials: [] }
+];
+
+const $ = s => document.querySelector(s);
+let sel = 0, filtered = [...TASKS], inDetail = false;
+
+function notify(t) { const el = $("#toast"); el.textContent = t; el.classList.add("show"); clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove("show"), 2300); }
+const pct = t => { const d = t.milestones.reduce((a, m) => a + m[1], 0), n = t.milestones.reduce((a, m) => a + m[2], 0); return Math.round(d / n * 100); };
+
+/* ---------- list ---------- */
+function renderRows() {
+  const q = $("#filter").value.trim().toLowerCase();
+  filtered = TASKS.filter(t => !q || (t.name + " " + t.id).toLowerCase().includes(q));
+  if (sel >= filtered.length) sel = Math.max(0, filtered.length - 1);
+  $("#rows").innerHTML = filtered.length ? filtered.map((t, i) => `
+    <button class="row ${t.active ? "active-task" : "done-task"} ${i === sel ? "sel" : ""}" onclick="openTask('${t.id}')" onmousemove="sel=${i};paintSel()">
+      <span class="dot"></span>
+      <span><span class="nm">${t.name}</span><span class="fid">${t.id}</span></span>
+      <span class="prog"><span class="bar"><i style="width:${pct(t)}%"></i></span><span class="pctxt">${pct(t)}%</span></span>
+      <span class="when">${t.when}, 2026</span>
+      <span class="open-hint">↵ open</span>
+    </button>`).join("") : `<div class="no-match">No tasks match — Esc to clear.</div>`;
+  $("#countN").textContent = filtered.length === TASKS.length ? TASKS.length + " folders" : filtered.length + " / " + TASKS.length;
+}
+function paintSel() {
+  document.querySelectorAll(".row").forEach((r, i) => r.classList.toggle("sel", i === sel));
+}
+
+/* ---------- detail ---------- */
+function openTask(id) {
+  const t = TASKS.find(x => x.id === id);
+  inDetail = true;
+  $("#crumb").innerHTML = `workflow-dev / tasks / <b>${t.id.split("_").slice(1).join("_")}</b>`;
+  $("#d-pos").textContent = (TASKS.indexOf(t) + 1) + " of " + TASKS.length;
+  $("#d-name").textContent = t.name;
+  $("#d-fid").textContent = "workflow/tasks/" + t.id;
+  $("#d-badges").innerHTML = `
+    <span class="bdg ${t.active ? "red" : "green"}">${t.active ? "In progress" : "Done"}</span>
+    <span class="bdg amber">task.md · yours</span>
+    <span class="bdg grey">plan · AI-owned, read-only</span>
+    <span class="bdg grey">${t.materials.length} materials</span>`;
+  const p = pct(t);
+  $("#d-body").innerHTML = `
+    <div class="doc-sec"><h2>Context <span class="own you">task.md</span></h2><div class="md">${t.context}</div></div>
+    <div class="doc-sec"><h2>Request <span class="own you">task.md</span></h2><div class="md">${t.request}</div></div>
+    <div class="doc-sec"><h2>Reference <span class="own you">task.md</span></h2><div class="md">${t.reference || `<p class="placeholder">No content yet.</p>`}</div></div>
+    <div class="doc-sec"><h2>Implementation plan <span class="own agent">AI-owned</span></h2>
+      <div class="plan-meter"><span class="bar"><i style="width:${p}%"></i></span><span>${p}%</span></div>
+      ${t.milestones.map(([nm, d, tot]) => `<div class="plan-line ${d === tot ? "done" : ""}">
+        <span class="bx">${d === tot ? "✓" : ""}</span><span class="t">${nm}</span><span class="c">${d}/${tot}</span></div>`).join("")}
+    </div>
+    <div class="doc-sec"><h2>Supporting materials</h2>
+      ${t.materials.length ? t.materials.map(f => `<div class="mat-line"><span>▣ ${f.name}</span>
+        <span class="acts"><a href="#" onclick="notify('Demo: opens file');return false">Open</a><a href="#" onclick="notify('Demo: downloads file');return false">Download</a></span>
+        <span class="sz">${f.size}</span></div>`).join("")
+      : `<p class="placeholder md">Nothing in supporting-materials/ yet.</p>`}
+    </div>`;
+  $("#view-list").classList.remove("active");
+  $("#view-detail").classList.add("active");
+  $(".main").scrollTop = 0;
+}
+function showList() {
+  inDetail = false;
+  $("#crumb").innerHTML = `workflow-dev / <b>tasks</b>`;
+  $("#view-detail").classList.remove("active");
+  $("#view-list").classList.add("active");
+  paintSel();
+}
+
+/* ---------- command palette ---------- */
+const ACTIONS = [
+  { ic: "＋", label: "New task", meta: "creates the standard folder", run: () => notify("Demo: creates task.md + empty plan + supporting-materials/") },
+  { ic: "§", label: "Open guidelines.md", meta: "workflow rules", run: () => notify("Demo: opens the rendered guidelines") },
+  { ic: "🗺", label: "Request implementation plan", meta: "crosses the planning boundary", run: () => notify("Demo: sends the explicit planning request") },
+  { ic: "◈", label: "Validate development checkpoint", meta: "approve and continue", run: () => notify("Demo: checkpoint validated") }
+];
+let palSel = 0, palItems = [];
+function palRender() {
+  const q = $("#palInput").value.trim().toLowerCase();
+  const acts = ACTIONS.filter(a => !q || a.label.toLowerCase().includes(q));
+  const tasks = TASKS.filter(t => !q || (t.name + " " + t.id).toLowerCase().includes(q));
+  palItems = [...acts.map(a => ({ type: "a", a })), ...tasks.map(t => ({ type: "t", t }))];
+  if (palSel >= palItems.length) palSel = Math.max(0, palItems.length - 1);
+  let html = "";
+  if (acts.length) html += `<div class="pal-group">Actions</div>` + acts.map((a, i) =>
+    `<button class="pal-item ${palItems[i] && i === palSel ? "sel" : ""}" data-i="${i}"><span class="ic">${a.ic}</span><span>${a.label}</span><span class="meta">${a.meta}</span></button>`).join("");
+  if (tasks.length) html += `<div class="pal-group">Go to task</div>` + tasks.map((t, j) => {
+    const i = acts.length + j;
+    return `<button class="pal-item ${i === palSel ? "sel" : ""}" data-i="${i}"><span class="ic">${t.active ? "●" : "✓"}</span><span>${t.name}</span><span class="meta">${pct(t)}% · ${t.when}</span></button>`;
+  }).join("");
+  $("#palList").innerHTML = html || `<div class="pal-empty">Nothing matches “${q}”.</div>`;
+  document.querySelectorAll(".pal-item").forEach(el => el.addEventListener("click", () => { palSel = +el.dataset.i; palRun(); }));
+}
+function palRun() {
+  const it = palItems[palSel]; if (!it) return;
+  closePalette();
+  if (it.type === "a") it.a.run(); else openTask(it.t.id);
+}
+function openPalette() { $("#palScrim").classList.add("open"); $("#palInput").value = ""; palSel = 0; palRender(); $("#palInput").focus(); }
+function closePalette() { $("#palScrim").classList.remove("open"); }
+$("#palInput").addEventListener("input", () => { palSel = 0; palRender(); });
+$("#palScrim").addEventListener("click", e => { if (e.target === $("#palScrim")) closePalette(); });
+
+/* ---------- keyboard ---------- */
+document.addEventListener("keydown", e => {
+  const paletteOpen = $("#palScrim").classList.contains("open");
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); paletteOpen ? closePalette() : openPalette(); return; }
+  if (paletteOpen) {
+    if (e.key === "Escape") closePalette();
+    if (e.key === "ArrowDown") { e.preventDefault(); palSel = Math.min(palSel + 1, palItems.length - 1); palRender(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); palSel = Math.max(palSel - 1, 0); palRender(); }
+    if (e.key === "Enter") { e.preventDefault(); palRun(); }
+    return;
+  }
+  if (e.target.matches("input")) {
+    if (e.key === "Escape") { e.target.value = ""; renderRows(); e.target.blur(); }
+    if (e.key === "Enter" && !inDetail && filtered[sel]) openTask(filtered[sel].id);
+    return;
+  }
+  if (inDetail) { if (e.key === "Escape") showList(); return; }
+  if (e.key === "/") { e.preventDefault(); $("#filter").focus(); }
+  else if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(sel + 1, filtered.length - 1); paintSel(); }
+  else if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(sel - 1, 0); paintSel(); }
+  else if (e.key === "Enter") { if (filtered[sel]) openTask(filtered[sel].id); }
+  else if (e.key.toLowerCase() === "n") { notify("Demo: creates task.md + empty plan + supporting-materials/"); }
+});
+
+$("#filter").addEventListener("input", () => { sel = 0; renderRows(); });
+
+/* status bar */
+(function () {
+  const d = TASKS.reduce((a, t) => a + t.milestones.reduce((x, m) => x + m[1], 0), 0);
+  const n = TASKS.reduce((a, t) => a + t.milestones.reduce((x, m) => x + m[2], 0), 0);
+  $("#statTasks").textContent = TASKS.length + " tasks · " + d + "/" + n + " plan items checked";
+})();
+
+renderRows();
+</script>
+</body>
+</html>

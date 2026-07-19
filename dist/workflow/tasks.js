@@ -16,7 +16,11 @@ exports.readTaskSections = readTaskSections;
 exports.saveTaskSections = saveTaskSections;
 exports.readImplementationPlan = readImplementationPlan;
 exports.readGuidelines = readGuidelines;
+exports.getSupportingMaterialsPath = getSupportingMaterialsPath;
 exports.listSupportingMaterials = listSupportingMaterials;
+exports.sanitizeSupportingMaterialFileName = sanitizeSupportingMaterialFileName;
+exports.addSupportingMaterialFile = addSupportingMaterialFile;
+exports.removeSupportingMaterial = removeSupportingMaterial;
 exports.resolveSupportingMaterialPath = resolveSupportingMaterialPath;
 exports.formatBytes = formatBytes;
 const fs_1 = __importDefault(require("fs"));
@@ -203,11 +207,13 @@ function readImplementationPlan(workflowPath, taskId) {
 function readGuidelines(workflowPath) {
     return readTextFileIfExists(path_1.default.join(workflowPath, "guidelines.md"));
 }
-function listSupportingMaterials(workflowPath, taskId) {
+function getSupportingMaterialsPath(workflowPath, taskId) {
     const materialsPath = path_1.default.join(getTaskPath(workflowPath, taskId), "supporting-materials");
-    if (!fs_1.default.existsSync(materialsPath)) {
-        return [];
-    }
+    fs_1.default.mkdirSync(materialsPath, { recursive: true });
+    return materialsPath;
+}
+function listSupportingMaterials(workflowPath, taskId) {
+    const materialsPath = getSupportingMaterialsPath(workflowPath, taskId);
     const materials = [];
     collectSupportingMaterials(materialsPath, materialsPath, materials);
     return materials.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
@@ -231,8 +237,45 @@ function collectSupportingMaterials(rootPath, currentPath, materials) {
         });
     }
 }
+function sanitizeSupportingMaterialFileName(fileName) {
+    const baseName = fileName.split(/[\\/]/).pop() ?? "";
+    const sanitizedName = baseName
+        .replace(/[\x00-\x1f\x80-\x9f]/g, "")
+        .replace(/[<>:"/\\|?*]+/g, "-")
+        .replace(/\s+/g, " ")
+        .replace(/^-+|-+$/g, "")
+        .replace(/^\.+/, "")
+        .trim();
+    return sanitizedName || "material";
+}
+function uniqueSupportingMaterialFileName(materialsPath, fileName) {
+    const extension = path_1.default.extname(fileName);
+    const name = fileName.slice(0, fileName.length - extension.length) || "material";
+    let candidateName = fileName;
+    let index = 1;
+    while (fs_1.default.existsSync((0, paths_1.safeResolveWithin)(materialsPath, candidateName))) {
+        candidateName = `${name}-${index}${extension}`;
+        index += 1;
+    }
+    return candidateName;
+}
+function addSupportingMaterialFile(workflowPath, taskId, fileName, content) {
+    const materialsPath = getSupportingMaterialsPath(workflowPath, taskId);
+    const safeFileName = uniqueSupportingMaterialFileName(materialsPath, sanitizeSupportingMaterialFileName(fileName));
+    const materialPath = (0, paths_1.safeResolveWithin)(materialsPath, safeFileName);
+    fs_1.default.writeFileSync(materialPath, content);
+    return {
+        name: safeFileName,
+        relativePath: safeFileName,
+        size: content.length,
+    };
+}
+function removeSupportingMaterial(workflowPath, taskId, materialRelativePath) {
+    const materialPath = resolveSupportingMaterialPath(workflowPath, taskId, materialRelativePath);
+    fs_1.default.unlinkSync(materialPath);
+}
 function resolveSupportingMaterialPath(workflowPath, taskId, materialRelativePath) {
-    const materialsPath = path_1.default.join(getTaskPath(workflowPath, taskId), "supporting-materials");
+    const materialsPath = getSupportingMaterialsPath(workflowPath, taskId);
     const materialPath = (0, paths_1.safeResolveWithin)(materialsPath, materialRelativePath);
     if (!fs_1.default.existsSync(materialPath) || !fs_1.default.statSync(materialPath).isFile()) {
         throw new Error("Supporting material not found.");

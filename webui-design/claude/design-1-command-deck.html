@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design 1 · Command Deck — AILoveCode Workflow</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --surface: #11151d;
+    --surface-2: #171c26;
+    --border: #232a36;
+    --border-soft: #1b212c;
+    --ink: #e6edf3;
+    --ink-2: #9aa6b5;
+    --ink-3: #667081;
+    --accent: #35bdb2;
+    --accent-ink: #072421;
+    --human: #e3b341;
+    --ai: #a78bfa;
+    --good: #3fb950;
+    --mono: "Cascadia Code", "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+    --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+
+  .app { display: flex; min-height: 100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width: 248px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .brand {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .brand .logo {
+    font-family: var(--mono); font-size: 15px; font-weight: 700; letter-spacing: .02em;
+  }
+  .brand .logo .tilde { color: var(--accent); }
+  .brand .sub { margin-top: 2px; font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
+
+  .nav { padding: 12px 10px; display: grid; gap: 2px; }
+  .nav-label { padding: 10px 12px 4px; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; border-radius: 6px;
+    color: var(--ink-2); font-weight: 500; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--surface-2); color: var(--ink); }
+  .nav-item.active { background: var(--surface-2); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
+  .nav-item .icon { width: 16px; text-align: center; color: var(--ink-3); font-family: var(--mono); font-size: 13px; }
+  .nav-item.active .icon { color: var(--accent); }
+  .nav-item .count {
+    margin-left: auto; font-family: var(--mono); font-size: 11px;
+    color: var(--ink-3); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 0 6px;
+  }
+
+  .sidebar-foot {
+    margin-top: auto; padding: 14px 20px; border-top: 1px solid var(--border-soft);
+    font-family: var(--mono); font-size: 11px; color: var(--ink-3); word-break: break-all;
+  }
+  .sidebar-foot .dot { color: var(--good); margin-right: 6px; }
+
+  /* ---------- Main ---------- */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 28px; border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 60%, var(--bg));
+    position: sticky; top: 0; z-index: 5; backdrop-filter: blur(6px);
+  }
+  .crumbs { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+  .crumbs b { color: var(--ink-2); font-weight: 600; }
+  .palette-btn {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); background: var(--surface);
+    border-radius: 7px; padding: 6px 12px; font-size: 12px; color: var(--ink-3);
+  }
+  .palette-btn:hover { color: var(--ink-2); border-color: #2e3745; }
+  kbd {
+    font-family: var(--mono); font-size: 10px; color: var(--ink-2);
+    background: var(--bg); border: 1px solid var(--border); border-bottom-width: 2px;
+    border-radius: 4px; padding: 1px 5px;
+  }
+
+  .content { padding: 28px; max-width: 1060px; width: 100%; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .page-head { margin-bottom: 22px; }
+  .page-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .page-head .meta { margin-top: 4px; font-size: 13px; color: var(--ink-2); }
+  .page-head .meta code { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+  /* ---------- Panels & tiles ---------- */
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border-soft);
+  }
+  .panel-head h2 { font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+  .panel-head .link { font-size: 12px; color: var(--accent); font-weight: 600; }
+  .panel-head .link:hover { text-decoration: underline; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tile .label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .tile .value { margin-top: 6px; font-size: 26px; font-weight: 700; font-family: var(--mono); letter-spacing: -.02em; }
+  .tile .hint { margin-top: 2px; font-size: 11px; color: var(--ink-3); }
+
+  /* ---------- Task rows ---------- */
+  .task-row {
+    display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+    padding: 11px 16px; border-bottom: 1px solid var(--border-soft);
+  }
+  .task-row:last-child { border-bottom: none; }
+  .task-row:hover { background: var(--surface-2); }
+  .task-row .phase {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .task-row .titles { min-width: 0; flex: 1; }
+  .task-row .name { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-row .id { font-family: var(--mono); font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-row .chips { display: flex; gap: 6px; flex-shrink: 0; }
+  .task-row .when { flex-shrink: 0; width: 84px; text-align: right; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+
+  .chip {
+    font-family: var(--mono); font-size: 10.5px; padding: 2px 8px;
+    border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); background: var(--bg);
+    white-space: nowrap;
+  }
+  .chip.human { color: var(--human); border-color: color-mix(in srgb, var(--human) 35%, var(--border)); }
+  .chip.ai { color: var(--ai); border-color: color-mix(in srgb, var(--ai) 35%, var(--border)); }
+  .chip.good { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, var(--border)); }
+
+  .phase.p-understanding { background: var(--human); }
+  .phase.p-planning { background: var(--ai); }
+  .phase.p-implementation { background: var(--accent); }
+  .phase.p-done { background: var(--ink-3); }
+
+  .legend { display: flex; gap: 16px; margin: 14px 2px 0; font-size: 11px; color: var(--ink-3); }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* ---------- Search ---------- */
+  .search-bar { display: flex; gap: 10px; margin-bottom: 14px; }
+  .search-bar input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 14px; color: var(--ink); font-family: var(--mono); font-size: 13px;
+  }
+  .search-bar input::placeholder { color: var(--ink-3); }
+  .search-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+  .result-count { align-self: center; font-family: var(--mono); font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+
+  .empty { padding: 22px 16px; text-align: center; color: var(--ink-3); font-size: 13px; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-2);
+  }
+  .btn:hover { color: var(--ink); border-color: #2e3745; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger:hover { color: #f85149; border-color: #f8514966; }
+
+  /* ---------- Detail ---------- */
+  .detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+  .back { font-size: 12px; color: var(--accent); font-weight: 600; }
+  .back:hover { text-decoration: underline; }
+  .detail-head h1 { font-size: 21px; font-weight: 700; margin-top: 6px; }
+  .detail-head .id { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .owner-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+  .tabs {
+    display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 18px;
+  }
+  .tab {
+    padding: 9px 14px; font-size: 13px; font-weight: 600; color: var(--ink-3);
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--ink-2); }
+  .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  .section { padding: 16px; }
+  .section + .section { border-top: 1px solid var(--border-soft); }
+  .section h3 {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 10px;
+  }
+  .section p, .section li { color: var(--ink-2); font-size: 13.5px; }
+  .section ul { padding-left: 20px; display: grid; gap: 4px; }
+  .section .placeholder { color: var(--ink-3); font-style: italic; }
+  .section code { font-family: var(--mono); font-size: 12px; background: var(--bg); border: 1px solid var(--border-soft); border-radius: 4px; padding: 1px 6px; }
+
+  .readonly-note {
+    display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+    font-size: 12px; color: var(--ink-3); border-bottom: 1px solid var(--border-soft);
+    font-family: var(--mono);
+  }
+  .readonly-note .chip { flex-shrink: 0; }
+
+  .plan-progress { padding: 16px; border-bottom: 1px solid var(--border-soft); }
+  .plan-progress .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-bottom: 8px; font-family: var(--mono); }
+  .meter { height: 6px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border-soft); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+  .check { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 13.5px; color: var(--ink-2); }
+  .check .box { font-family: var(--mono); color: var(--ink-3); }
+  .check.done .box { color: var(--good); }
+  .check.done span { text-decoration: line-through; text-decoration-color: var(--ink-3); color: var(--ink-3); }
+
+  .file-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--border-soft); }
+  .file-row:last-child { border-bottom: none; }
+  .file-row .fname { font-family: var(--mono); font-size: 12.5px; }
+  .file-row .fsize { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+  .file-row .actions { margin-left: auto; display: flex; gap: 12px; font-size: 12px; font-weight: 600; }
+  .file-row .actions a { color: var(--accent); }
+  .file-row .actions a:hover { text-decoration: underline; }
+  .file-row .actions .remove { color: var(--ink-3); }
+  .file-row .actions .remove:hover { color: #f85149; }
+
+  .dropzone {
+    margin: 16px; padding: 22px; text-align: center;
+    border: 1px dashed var(--border); border-radius: 8px; color: var(--ink-3); font-size: 12.5px;
+  }
+  .dropzone b { color: var(--ink-2); }
+
+  /* ---------- Forms ---------- */
+  .form-grid { display: grid; gap: 18px; padding: 18px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 7px; }
+  .field .req { color: var(--human); }
+  .field input[type=text], .field textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 12px; color: var(--ink); font-family: var(--mono); font-size: 13px;
+  }
+  .field textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+  .field .hint { margin-top: 6px; font-size: 11.5px; color: var(--ink-3); }
+  .folder-preview { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-top: 6px; }
+  .form-actions { display: flex; gap: 10px; padding: 0 18px 18px; }
+
+  .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
+
+  .rule-list { padding: 14px 16px; display: grid; gap: 10px; }
+  .rule-list .rule { display: flex; gap: 10px; font-size: 12.5px; color: var(--ink-2); }
+  .rule-list .rule .chip { flex-shrink: 0; }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .tiles { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .task-row .chips { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"><span class="tilde">~/</span>ailovecode</div>
+      <div class="sub">workflow · file mode</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <button class="nav-item active" data-nav="dashboard" onclick="go('dashboard')"><span class="icon">◧</span> Dashboard</button>
+      <button class="nav-item" data-nav="tasks" onclick="go('tasks')"><span class="icon">☰</span> Tasks <span class="count">6</span></button>
+      <button class="nav-item" data-nav="new" onclick="go('new')"><span class="icon">+</span> New Task</button>
+      <div class="nav-label">Reference</div>
+      <button class="nav-item"><span class="icon">§</span> Guidelines</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div><span class="dot">●</span>serving locally :4820</div>
+      <div style="margin-top:6px">C:\…\ailovecode-workflow\workflow</div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <div class="topbar">
+      <div class="crumbs" id="crumbs">workflow / <b>dashboard</b></div>
+      <button class="palette-btn">Jump to task… <kbd>Ctrl</kbd><kbd>K</kbd></button>
+    </div>
+
+    <div class="content">
+
+      <!-- ======== VIEW: DASHBOARD ======== -->
+      <section class="view active" id="view-dashboard">
+        <div class="page-head">
+          <h1>Dashboard</h1>
+          <div class="meta">Local file-mode WebUI — everything below is read from <code>workflow/tasks/</code>.</div>
+        </div>
+
+        <div class="tiles">
+          <div class="tile"><div class="label">Tasks</div><div class="value">6</div><div class="hint">in workflow/tasks/</div></div>
+          <div class="tile"><div class="label">In progress</div><div class="value">1</div><div class="hint">implementation phase</div></div>
+          <div class="tile"><div class="label">Awaiting plan</div><div class="value">2</div><div class="hint">task.md ready, plan empty</div></div>
+          <div class="tile"><div class="label">Materials</div><div class="value">5</div><div class="hint">supporting files total</div></div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Recent tasks</h2>
+              <a class="link" href="#" onclick="go('tasks');return false">View all →</a>
+            </div>
+            <div id="recent-tasks"></div>
+          </div>
+
+          <div>
+            <div class="panel">
+              <div class="panel-head"><h2>Ownership rules</h2></div>
+              <div class="rule-list">
+                <div class="rule"><span class="chip human">HUMAN</span> task.md is user-owned — the source of truth.</div>
+                <div class="rule"><span class="chip ai">AI</span> implementation-plan.md is AI-owned, read-only here.</div>
+                <div class="rule"><span class="chip">FILES</span> supporting-materials/ holds screenshots, logs, payloads.</div>
+              </div>
+            </div>
+            <div class="legend">
+              <span><i class="phase p-understanding"></i> understanding</span>
+              <span><i class="phase p-planning"></i> planning</span>
+              <span><i class="phase p-implementation"></i> implementing</span>
+              <span><i class="phase p-done"></i> done</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== VIEW: TASK LIST ======== -->
+      <section class="view" id="view-tasks">
+        <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div>
+            <h1>Tasks</h1>
+            <div class="meta">Loaded from <code>workflow/tasks/</code> · newest first</div>
+          </div>
+          <button class="btn primary" onclick="go('new')">+ New Task</button>
+        </div>
+
+        <div class="search-bar">
+          <input id="task-search" type="search" placeholder="/ filter by name, folder, or preview…" oninput="filterTasks()">
+          <div class="result-count" id="task-count"></div>
+        </div>
+
+        <div class="panel" id="task-list"></div>
+        <div class="legend">
+          <span><i class="phase p-understanding"></i> understanding</span>
+          <span><i class="phase p-planning"></i> planning</span>
+          <span><i class="phase p-implementation"></i> implementing</span>
+          <span><i class="phase p-done"></i> done</span>
+        </div>
+      </section>
+
+      <!-- ======== VIEW: TASK DETAIL ======== -->
+      <section class="view" id="view-detail">
+        <div class="detail-head">
+          <div>
+            <a class="back" href="#" onclick="go('tasks');return false">← tasks</a>
+            <h1 id="d-name"></h1>
+            <div class="id" id="d-id"></div>
+            <div class="owner-strip">
+              <span class="chip human">task.md · human-owned</span>
+              <span class="chip ai">implementation-plan.md · read-only</span>
+              <span class="chip" id="d-materials-chip"></span>
+            </div>
+          </div>
+          <button class="btn" onclick="alert('Demo: opens the inline Overview editor for task.md sections.')">Edit task.md</button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="overview" onclick="setTab('overview')">Overview</button>
+          <button class="tab" data-tab="plan" onclick="setTab('plan')">Implementation Plan</button>
+          <button class="tab" data-tab="materials" onclick="setTab('materials')">Supporting Materials <span id="d-materials-count"></span></button>
+        </div>
+
+        <div class="tab-pane active" data-pane="overview">
+          <div class="panel">
+            <div class="readonly-note"><span class="chip human">HUMAN</span> Context · Request · Reference — parsed from task.md</div>
+            <div class="section"><h3>Context</h3><div id="d-context"></div></div>
+            <div class="section"><h3>Request</h3><div id="d-request"></div></div>
+            <div class="section"><h3>Reference</h3><div id="d-reference"></div></div>
+          </div>
+        </div>
+
+        <div class="tab-pane" data-pane="plan">
+          <div class="panel">
+            <div class="readonly-note"><span class="chip ai">AI</span> implementation-plan.md — written by the agent during planning</div>
+            <div id="d-plan"></div>
+          </div>
+        </div>
+
+        <div class="tab-pane" data-pane="materials">
+          <div class="panel">
+            <div class="readonly-note"><span class="chip">FILES</span> supporting-materials/ — referenced from task.md when needed</div>
+            <div id="d-files"></div>
+            <div class="dropzone">Drop files here or <b>browse</b> — stored inside this task's <span style="font-family:var(--mono)">supporting-materials/</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== VIEW: NEW TASK ======== -->
+      <section class="view" id="view-new">
+        <div class="page-head">
+          <a class="back" href="#" onclick="go('tasks');return false">← tasks</a>
+          <h1 style="margin-top:6px">New Task</h1>
+          <div class="meta">Creates the standard folder with <code>task.md</code>, an empty <code>implementation-plan.md</code>, and <code>supporting-materials/</code>.</div>
+        </div>
+
+        <div class="panel">
+          <div class="form-grid">
+            <div class="field">
+              <label>Task name <span class="req">*</span></label>
+              <input type="text" placeholder="add login page" oninput="previewFolder(this.value)">
+              <div class="folder-preview" id="folder-preview">→ workflow/tasks/20260712T2358_…</div>
+            </div>
+            <div class="field">
+              <label>Context</label>
+              <textarea placeholder="What is the situation? Current behavior, background, links…"></textarea>
+            </div>
+            <div class="field">
+              <label>Request</label>
+              <textarea placeholder="What should be done?"></textarea>
+            </div>
+            <div class="field">
+              <label>Reference</label>
+              <textarea placeholder="Paths, URLs, supporting-materials/… entries"></textarea>
+              <div class="hint">Attach files after creation — their supporting-materials/ paths can be cited here.</div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn primary" onclick="alert('Demo: would POST /tasks/new and create the folder.')">Create task</button>
+            <button class="btn" onclick="go('tasks')">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const TASKS = [
+  {
+    id: "20260712T2341_webui-design-claude", name: "WebUI Design Claude",
+    created: "Jul 12", phase: "planning", materials: 0,
+    preview: "Create 3 UI proposals as separate HTML demos for the WebUI redesign.",
+    context: "<p>Currently created webui for ailovecode-workflow, but need to have better ui.</p>",
+    request: "<p>Create 3 ui that you think is best for this project. Create as 3 separate html to demo the design for the webui, under <code>webui-design/claude</code>.</p>",
+    reference: "<p class='placeholder'>No content yet.</p>",
+    plan: null,
+    files: []
+  },
+  {
+    id: "20260712T2335_webui-design-codex", name: "WebUI Design Codex",
+    created: "Jul 12", phase: "understanding", materials: 0,
+    preview: "Parallel design exploration task for comparison.",
+    context: "<p>Same redesign brief, explored by a different agent for comparison.</p>",
+    request: "<p>Create 3 design demos under <code>webui-design/codex</code>.</p>",
+    reference: "<p class='placeholder'>No content yet.</p>",
+    plan: null,
+    files: []
+  },
+  {
+    id: "20260623T0645_webui-supporting-materials-management", name: "WebUI Supporting Materials Management",
+    created: "Jun 23", phase: "implementation", materials: 3,
+    preview: "Upload, preview, and remove files in each task's supporting-materials folder from the WebUI.",
+    context: "<p>Tasks accumulate screenshots, logs, and payloads. Managing them requires the file explorer today.</p>",
+    request: "<p>Add upload / open / download / remove for <code>supporting-materials/</code> to the task detail page, plus attach-on-create.</p>",
+    reference: "<ul><li><code>supporting-materials/upload-flow.png</code></li><li><code>supporting-materials/materials-api-notes.md</code></li></ul>",
+    plan: {
+      progress: 66, done: 2, total: 3,
+      milestones: [
+        { name: "Milestone 1 — Materials API", done: true, items: [["List / stream files with safe path handling", true], ["Multipart upload endpoint", true], ["Delete endpoint with confirmation", true]] },
+        { name: "Milestone 2 — Task detail UI", done: true, items: [["Materials tab with file list", true], ["Upload form + drop target", true]] },
+        { name: "Milestone 3 — Attach on create", done: false, items: [["File input on the new-task form", true], ["Reference path preview for selected files", false]] }
+      ]
+    },
+    files: [
+      { name: "upload-flow.png", size: "184 KB" },
+      { name: "materials-api-notes.md", size: "3.2 KB" },
+      { name: "sample-payload.json", size: "0.9 KB" }
+    ]
+  },
+  {
+    id: "20260618T1210_webui-task-creation", name: "WebUI Task Creation",
+    created: "Jun 18", phase: "done", materials: 1,
+    preview: "Create tasks from the browser with the standard task.md template sections.",
+    context: "<p>Tasks could only be created via the CLI. A browser flow keeps the same folder conventions.</p>",
+    request: "<p>Add a New Task form producing the standard <code>YYYYMMDDTHHMM_name</code> folder with template sections.</p>",
+    reference: "<ul><li><code>supporting-materials/form-sketch.png</code></li></ul>",
+    plan: {
+      progress: 100, done: 2, total: 2,
+      milestones: [
+        { name: "Milestone 1 — Create endpoint", done: true, items: [["Folder + template generation", true], ["Name validation & slugging", true]] },
+        { name: "Milestone 2 — Form UI", done: true, items: [["Section textareas matching template", true], ["Error and success states", true]] }
+      ]
+    },
+    files: [{ name: "form-sketch.png", size: "92 KB" }]
+  },
+  {
+    id: "20260610T0900_embedded-webui-task-list-improvements", name: "Embedded WebUI Task List Improvements",
+    created: "Jun 10", phase: "done", materials: 0,
+    preview: "Search, previews, and file-status badges on the task list.",
+    context: "<p>The list showed folder names only; finding a task required remembering timestamps.</p>",
+    request: "<p>Add client-side search, request previews, and task.md / plan / materials badges.</p>",
+    reference: "<p class='placeholder'>No content yet.</p>",
+    plan: {
+      progress: 100, done: 1, total: 1,
+      milestones: [
+        { name: "Milestone 1 — List UX", done: true, items: [["Search filter with result count", true], ["Status badges per task", true], ["Request preview lines", true]] }
+      ]
+    },
+    files: []
+  },
+  {
+    id: "20260601T1420_embedded-webui-file-mode", name: "Embedded WebUI File Mode",
+    created: "Jun 1", phase: "done", materials: 1,
+    preview: "Serve the workflow folder as a local WebUI while preserving file-based rules.",
+    context: "<p>The workflow is file-based by design; a UI must not break ownership rules.</p>",
+    request: "<p>Serve dashboard, task list, and read-only plan views from the local <code>workflow/</code> directory.</p>",
+    reference: "<ul><li><code>supporting-materials/route-map.md</code></li></ul>",
+    plan: {
+      progress: 100, done: 2, total: 2,
+      milestones: [
+        { name: "Milestone 1 — Server", done: true, items: [["Express server over workflow/", true], ["Markdown rendering", true]] },
+        { name: "Milestone 2 — Core pages", done: true, items: [["Dashboard + task list", true], ["Task detail with tabs", true]] }
+      ]
+    },
+    files: [{ name: "route-map.md", size: "1.4 KB" }]
+  }
+];
+
+const PHASE_LABEL = { understanding: "understanding", planning: "planning", implementation: "implementing", done: "done" };
+
+function rowHtml(t) {
+  return `<button class="task-row" onclick="openTask('${t.id}')">
+    <span class="phase p-${t.phase}" title="${PHASE_LABEL[t.phase]}"></span>
+    <span class="titles">
+      <span class="name">${t.name}</span><br>
+      <span class="id">${t.id}</span>
+    </span>
+    <span class="chips">
+      <span class="chip ${t.phase !== "understanding" ? "good" : ""}">task.md ${t.phase !== "understanding" ? "✓" : "…"}</span>
+      <span class="chip ${t.plan ? "ai" : ""}">plan ${t.plan ? "✓" : "—"}</span>
+      <span class="chip">files ${t.materials}</span>
+    </span>
+    <span class="when">${t.created}</span>
+  </button>`;
+}
+
+function renderLists() {
+  document.getElementById("recent-tasks").innerHTML = TASKS.slice(0, 4).map(rowHtml).join("");
+  document.getElementById("task-list").innerHTML = TASKS.map(rowHtml).join("");
+  document.getElementById("task-count").textContent = TASKS.length + " tasks";
+}
+
+function filterTasks() {
+  const q = document.getElementById("task-search").value.trim().toLowerCase();
+  const matches = TASKS.filter(t => !q || (t.name + " " + t.id + " " + t.preview).toLowerCase().includes(q));
+  document.getElementById("task-list").innerHTML =
+    matches.length ? matches.map(rowHtml).join("") : `<div class="empty">No tasks match “${q}”.</div>`;
+  document.getElementById("task-count").textContent = q ? `${matches.length} of ${TASKS.length} shown` : `${TASKS.length} tasks`;
+}
+
+const CRUMB = { dashboard: "workflow / <b>dashboard</b>", tasks: "workflow / <b>tasks</b>", new: "workflow / tasks / <b>new</b>", detail: "workflow / tasks / <b>detail</b>" };
+
+function go(view) {
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + view));
+  document.querySelectorAll(".nav-item[data-nav]").forEach(n => n.classList.toggle("active", n.dataset.nav === view));
+  document.getElementById("crumbs").innerHTML = CRUMB[view] || CRUMB.dashboard;
+  window.scrollTo(0, 0);
+}
+
+function setTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.dataset.pane === tab));
+}
+
+function openTask(id) {
+  const t = TASKS.find(x => x.id === id);
+  document.getElementById("d-name").textContent = t.name;
+  document.getElementById("d-id").textContent = "workflow/tasks/" + t.id;
+  document.getElementById("d-materials-chip").textContent = "materials: " + t.materials;
+  document.getElementById("d-materials-count").textContent = t.materials ? "· " + t.materials : "";
+  document.getElementById("d-context").innerHTML = t.context;
+  document.getElementById("d-request").innerHTML = t.request;
+  document.getElementById("d-reference").innerHTML = t.reference;
+
+  const plan = document.getElementById("d-plan");
+  if (!t.plan) {
+    plan.innerHTML = `<div class="empty" style="padding:34px 16px">implementation-plan.md is empty.<br>
+      <span style="font-size:12px">The agent writes it when planning is explicitly requested.</span></div>`;
+  } else {
+    plan.innerHTML = `
+      <div class="plan-progress">
+        <div class="row"><span>milestones ${t.plan.done}/${t.plan.total} complete</span><span>${t.plan.progress}%</span></div>
+        <div class="meter"><i style="width:${t.plan.progress}%"></i></div>
+      </div>` +
+      t.plan.milestones.map(m => `
+        <div class="section">
+          <h3 style="color:${m.done ? "var(--good)" : "var(--accent)"}">${m.done ? "✓ " : ""}${m.name}</h3>
+          ${m.items.map(([label, done]) => `<div class="check ${done ? "done" : ""}"><span class="box">[${done ? "x" : " "}]</span><span>${label}</span></div>`).join("")}
+        </div>`).join("");
+  }
+
+  const files = document.getElementById("d-files");
+  files.innerHTML = t.files.length
+    ? t.files.map(f => `<div class="file-row">
+        <span class="fname">${f.name}</span><span class="fsize">${f.size}</span>
+        <span class="actions"><a href="#">Open</a><a href="#">Download</a><a href="#" class="remove">Remove</a></span>
+      </div>`).join("")
+    : `<div class="empty">No supporting materials yet.</div>`;
+
+  setTab("overview");
+  go("detail");
+}
+
+function previewFolder(v) {
+  const slug = v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "…";
+  document.getElementById("folder-preview").textContent = "→ workflow/tasks/20260712T2358_" + slug;
+}
+
+renderLists();
+</script>
+</body>
+</html>

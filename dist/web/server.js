@@ -5,11 +5,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startWebServer = startWebServer;
 const express_1 = __importDefault(require("express"));
+const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const paths_1 = require("../workflow/paths");
 const markdown_1 = require("../workflow/markdown");
 const tasks_1 = require("../workflow/tasks");
 const views_1 = require("./views");
+function parseTaskDetailTab(value) {
+    return value === "plan" || value === "materials" ? value : "overview";
+}
 function getTaskSummary(workflowPath, taskId) {
     const task = (0, tasks_1.listTasks)(workflowPath).find((candidate) => candidate.id === taskId);
     if (!task) {
@@ -19,6 +23,7 @@ function getTaskSummary(workflowPath, taskId) {
 }
 function createApp(workflowPath) {
     const app = (0, express_1.default)();
+    const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
     app.use(express_1.default.urlencoded({ extended: false }));
     app.use("/assets", express_1.default.static(path_1.default.join(__dirname, "public")));
     app.get("/", (_req, res) => {
@@ -35,7 +40,7 @@ function createApp(workflowPath) {
     app.get("/tasks/new", (_req, res) => {
         res.send((0, views_1.renderTaskNew)());
     });
-    app.post("/tasks/new", (req, res) => {
+    app.post("/tasks/new", upload.array("materials"), (req, res) => {
         const values = {
             taskName: typeof req.body.taskName === "string" ? req.body.taskName : "",
             Context: typeof req.body.Context === "string" ? req.body.Context : "",
@@ -51,6 +56,10 @@ function createApp(workflowPath) {
                     Reference: values.Reference,
                 },
             });
+            const files = Array.isArray(req.files) ? req.files : [];
+            for (const file of files) {
+                (0, tasks_1.addSupportingMaterialFile)(workflowPath, createdTask.id, file.originalname, file.buffer);
+            }
             res.redirect(`/tasks/${encodeURIComponent(createdTask.id)}`);
         }
         catch (error) {
@@ -64,6 +73,7 @@ function createApp(workflowPath) {
             const sections = (0, tasks_1.readTaskSections)(workflowPath, task.id);
             const implementationPlan = (0, tasks_1.readImplementationPlan)(workflowPath, task.id);
             const materials = (0, tasks_1.listSupportingMaterials)(workflowPath, task.id);
+            const activeTab = parseTaskDetailTab(req.query.tab);
             res.send((0, views_1.renderTaskDetail)({
                 task,
                 sections: {
@@ -71,9 +81,12 @@ function createApp(workflowPath) {
                     Request: (0, markdown_1.renderMarkdown)(sections.Request),
                     Reference: (0, markdown_1.renderMarkdown)(sections.Reference),
                 },
+                editableSections: sections,
                 implementationPlanHtml: (0, markdown_1.renderMarkdown)(implementationPlan),
                 materials,
                 saved: req.query.saved === "1",
+                activeTab,
+                editingOverview: activeTab === "overview" && req.query.edit === "1",
             }));
         }
         catch (error) {
@@ -99,6 +112,30 @@ function createApp(workflowPath) {
                 Reference: typeof req.body.Reference === "string" ? req.body.Reference : "",
             });
             res.redirect(`/tasks/${encodeURIComponent(task.id)}?saved=1`);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    app.post("/tasks/:taskId/materials", upload.array("materials"), (req, res, next) => {
+        try {
+            const task = getTaskSummary(workflowPath, req.params.taskId);
+            const files = Array.isArray(req.files) ? req.files : [];
+            for (const file of files) {
+                (0, tasks_1.addSupportingMaterialFile)(workflowPath, task.id, file.originalname, file.buffer);
+            }
+            res.redirect(`/tasks/${encodeURIComponent(task.id)}?tab=materials`);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    app.post("/tasks/:taskId/materials/delete", (req, res, next) => {
+        try {
+            const task = getTaskSummary(workflowPath, req.params.taskId);
+            const relativePath = typeof req.body.relativePath === "string" ? req.body.relativePath : "";
+            (0, tasks_1.removeSupportingMaterial)(workflowPath, task.id, relativePath);
+            res.redirect(`/tasks/${encodeURIComponent(task.id)}?tab=materials`);
         }
         catch (error) {
             next(error);

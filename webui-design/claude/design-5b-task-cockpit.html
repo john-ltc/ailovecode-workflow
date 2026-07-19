@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design 5B · Task Cockpit — AILoveCode Workflow</title>
+<style>
+  :root {
+    --bg: #111827; --bg-deep: #0d1420; --card: #162131; --card-2: #1b2839;
+    --line: #24334a; --line-soft: #1d2a3d;
+    --ink: #f8fafc; --ink-2: #c3cbd8; --ink-3: #8b96a8;
+    --heart: #ef4444; --heart-soft: #3a1d26; --heart-glow: rgba(239,68,68,.35);
+    --green: #34d399; --green-soft: #143327;
+    --blue: #60a5fa; --blue-soft: #16263e;
+    --amber: #fbbf24; --amber-soft: #33290f;
+    --violet: #a78bfa; --violet-soft: #241d3a;
+    --sans: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    --shadow: 0 24px 70px rgba(5,10,20,.55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 13px/1.6 var(--sans); overflow: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: none; }
+  :focus-visible { outline: 2px solid var(--heart); outline-offset: 2px; }
+  ::selection { background: rgba(239,68,68,.3); }
+  ::-webkit-scrollbar { width: 9px; }
+  ::-webkit-scrollbar-thumb { background: #2b3b55; border-radius: 99px; border: 2px solid var(--bg); }
+
+  .app { height: 100vh; display: grid; grid-template-rows: 54px 52px minmax(0,1fr); }
+
+  /* ---------- top ---------- */
+  .top { display: flex; align-items: center; gap: 13px; padding: 0 16px; border-bottom: 1px solid var(--line); background: rgba(17,24,39,.78); backdrop-filter: blur(14px); z-index: 30; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; }
+  .logo .heart { color: var(--heart); filter: drop-shadow(0 0 8px var(--heart-glow)); }
+  .logo .thin { color: var(--ink-3); font-weight: 500; }
+  .task-switch {
+    height: 33px; max-width: 380px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px;
+    background: var(--card); color: var(--ink); font-size: 12px; font-weight: 600;
+  }
+  .task-switch option { background: var(--card); }
+  .top-right { margin-left: auto; display: flex; align-items: center; gap: 9px; }
+  .kbd { font: 9.5px var(--mono); color: var(--ink-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; background: var(--card); }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--heart), #b91c1c); color: #fff; font-size: 10.5px; font-weight: 800; }
+
+  /* ---------- phase stepper ---------- */
+  .stepper-bar { display: flex; align-items: center; gap: 4px; padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--bg-deep); overflow-x: auto; }
+  .step { display: flex; align-items: center; gap: 9px; padding: 8px 4px; flex-shrink: 0; }
+  .step .ball { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 800; border: 1.5px solid #33415c; color: var(--ink-3); }
+  .step.done .ball { background: var(--green-soft); border-color: rgba(52,211,153,.5); color: var(--green); }
+  .step.now .ball { background: var(--heart); border-color: var(--heart); color: #fff; box-shadow: 0 0 0 4px rgba(239,68,68,.18); }
+  .step .lbl { font-size: 11px; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
+  .step.done .lbl { color: var(--ink-2); }
+  .step.now .lbl { color: var(--ink); }
+  .step .sub { display: block; font-size: 9px; font-weight: 400; color: #55627a; }
+  .step-link { width: 34px; height: 1.5px; background: #33415c; flex-shrink: 0; }
+  .step-link.done { background: var(--green); opacity: .5; }
+  .stepper-meta { margin-left: auto; font: 10px var(--mono); color: var(--ink-3); white-space: nowrap; padding-left: 16px; }
+
+  /* ---------- cockpit grid ---------- */
+  .cockpit { min-height: 0; display: grid; grid-template-columns: 252px minmax(380px,1fr) 316px; grid-template-rows: minmax(0, 1fr); }
+
+  /* left: outline */
+  .outline { border-right: 1px solid var(--line); background: var(--bg-deep); overflow-y: auto; padding: 16px 12px; }
+  .o-title { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin: 0 6px 10px; }
+  .o-progress { margin: 0 6px 14px; }
+  .o-progress .nums { display: flex; justify-content: space-between; font: 10px var(--mono); color: var(--ink-3); margin-bottom: 6px; }
+  .o-progress .bar { height: 5px; border-radius: 99px; background: var(--card); overflow: hidden; }
+  .o-progress .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--heart), #f87171); }
+  .o-ms { width: 100%; text-align: left; display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 8px; padding: 7px 8px; border-radius: 8px; font-size: 11px; color: var(--ink-2); }
+  .o-ms:hover { background: var(--card); }
+  .o-ms .chk { width: 15px; height: 15px; border-radius: 5px; border: 1px solid #33415c; display: grid; place-items: center; font-size: 8.5px; color: var(--green); margin-top: 2px; }
+  .o-ms.done .chk { background: var(--green-soft); border-color: rgba(52,211,153,.5); }
+  .o-ms.done span:last-child { color: var(--ink-3); }
+  .o-ms .n { display: block; font: 9px var(--mono); color: #55627a; margin-top: 1px; }
+  .o-divider { height: 1px; background: var(--line-soft); margin: 14px 6px; }
+  .o-jump { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 8px; font-size: 11px; color: var(--ink-3); }
+  .o-jump:hover { background: var(--card); color: var(--ink-2); }
+
+  /* center: flight log */
+  .flight { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0,1fr) auto; }
+  .log { overflow-y: auto; padding: 24px clamp(18px,3.5vw,46px); }
+  .log-inner { width: min(720px,100%); margin: 0 auto; }
+
+  .entry { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 12px; margin-bottom: 24px; }
+  .badge { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 10px; font-weight: 800; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); }
+  .badge.ai { background: var(--heart); border-color: var(--heart); color: #fff; box-shadow: 0 3px 14px var(--heart-glow); }
+  .badge.sys { background: var(--bg-deep); color: var(--ink-3); }
+  .who { display: flex; gap: 9px; align-items: baseline; margin: 2px 0 8px; font-size: 11px; font-weight: 750; }
+  .who time { color: var(--ink-3); font-weight: 400; font-size: 10px; }
+  .bubble { padding: 13px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink-2); font-size: 12.5px; }
+  .bubble p { margin-bottom: 8px; } .bubble p:last-child { margin-bottom: 0; }
+  .bubble ul { padding-left: 18px; display: grid; gap: 3px; margin-bottom: 8px; }
+  .bubble code, .card-x code { font: 11px var(--mono); background: var(--bg-deep); border: 1px solid var(--line-soft); border-radius: 5px; padding: 1px 5px; color: #fda4af; }
+  .src { display: inline-flex; gap: 6px; margin-top: 9px; padding: 3px 8px; border-radius: 6px; background: var(--bg-deep); border: 1px solid var(--line-soft); color: var(--ink-3); font: 9.5px var(--mono); }
+  .src b { color: var(--amber); font-weight: 600; }
+
+  /* structured cards */
+  .card-x { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; }
+  .card-x-head { display: flex; align-items: center; gap: 9px; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; font-weight: 750; }
+  .card-x-head .tag { font-size: 9px; padding: 2px 8px; border-radius: 99px; font-weight: 750; }
+  .tag.blue { background: var(--blue-soft); color: var(--blue); }
+  .tag.violet { background: var(--violet-soft); color: var(--violet); }
+  .tag.green { background: var(--green-soft); color: var(--green); }
+  .card-x-head .right { margin-left: auto; font: 9.5px var(--mono); color: var(--ink-3); font-weight: 400; }
+  .card-x-body { padding: 13px 14px; font-size: 12px; color: var(--ink-2); }
+  .card-x-body .h { font-size: 9.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin: 12px 0 5px; }
+  .card-x-body .h:first-child { margin-top: 0; }
+  .card-x-body ul { padding-left: 18px; display: grid; gap: 3px; }
+
+  .ms-row { border-bottom: 1px solid var(--line-soft); }
+  .ms-row:last-child { border-bottom: none; }
+  .ms-row-btn { width: 100%; display: grid; grid-template-columns: 18px minmax(0,1fr) auto 12px; gap: 9px; align-items: center; padding: 9px 14px; text-align: left; }
+  .ms-row-btn:hover { background: var(--card-2); }
+  .ms-chk { width: 15px; height: 15px; border-radius: 5px; border: 1px solid #33415c; display: grid; place-items: center; font-size: 8.5px; color: var(--green); }
+  .ms-chk.done { background: var(--green-soft); border-color: rgba(52,211,153,.5); }
+  .ms-row-btn strong { font-size: 11.5px; font-weight: 650; color: var(--ink-2); }
+  .ms-row.done .ms-row-btn strong { color: var(--ink-3); }
+  .ms-row-btn .n { font: 9.5px var(--mono); color: var(--ink-3); }
+  .ms-row-btn .chev { color: var(--ink-3); font-size: 10px; transition: transform .15s; }
+  .ms-row.open .chev { transform: rotate(90deg); }
+  .ms-detail { display: none; padding: 2px 14px 10px 41px; }
+  .ms-row.open .ms-detail { display: block; }
+  .mi { display: grid; grid-template-columns: 16px minmax(0,1fr); gap: 8px; padding: 3px 0; font-size: 11px; color: var(--ink-3); }
+  .mi .bx { width: 13px; height: 13px; margin-top: 3px; border: 1px solid #3b4d6b; border-radius: 4px; display: grid; place-items: center; font-size: 8px; line-height: 1; color: var(--green); }
+  .mi.done .bx { background: var(--green-soft); border-color: rgba(52,211,153,.5); }
+  .mi.done span:last-child { text-decoration: line-through; text-decoration-color: #33415c; }
+  .pc-bar { height: 4px; background: var(--bg-deep); } .pc-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--heart), #f87171); }
+
+  /* checkpoint gate */
+  .gate { margin-top: 12px; border: 1px solid rgba(239,68,68,.4); border-radius: 12px; background: linear-gradient(180deg, rgba(239,68,68,.08), transparent 60%), var(--card); overflow: hidden; }
+  .gate.passed { border-color: rgba(52,211,153,.35); background: linear-gradient(180deg, rgba(52,211,153,.07), transparent 60%), var(--card); }
+  .gate-head { display: flex; gap: 11px; padding: 13px 14px 0; }
+  .gate-icon { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--heart-soft); color: #fca5a5; font-size: 14px; flex-shrink: 0; }
+  .gate.passed .gate-icon { background: var(--green-soft); color: var(--green); }
+  .gate h3 { font-size: 12.5px; font-weight: 800; }
+  .gate .sub2 { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+  .gate-files { display: flex; flex-wrap: wrap; gap: 6px; padding: 11px 14px 0 57px; }
+  .fchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg-deep); font: 9.5px var(--mono); color: var(--ink-2); }
+  .fchip i { font-style: normal; color: var(--green); font-size: 9px; }
+  .gate-actions { display: flex; gap: 8px; padding: 12px 14px 14px 57px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; border-radius: 9px; padding: 7px 14px; font-size: 11.5px; font-weight: 700; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); }
+  .btn:hover { border-color: #35496b; color: var(--ink); }
+  .btn.primary { background: var(--heart); border-color: var(--heart); color: #fff; box-shadow: 0 3px 14px var(--heart-glow); }
+  .btn.primary:hover { filter: brightness(1.1); }
+  .gate .stamp { margin-left: auto; align-self: center; font-size: 10px; font-weight: 800; color: var(--green); }
+
+  /* composer */
+  .composer-wrap { padding: 12px clamp(14px,3vw,40px) 15px; background: linear-gradient(transparent, var(--bg) 30%); }
+  .composer { width: min(720px,100%); margin: 0 auto; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 10px 34px rgba(5,10,20,.4); overflow: hidden; }
+  .composer:focus-within { border-color: #3d5278; }
+  .modes { display: flex; gap: 4px; padding: 9px 10px 0; }
+  .mode { padding: 4px 11px; border-radius: 99px; font-size: 10.5px; font-weight: 700; color: var(--ink-3); border: 1px solid transparent; }
+  .mode:hover { color: var(--ink-2); }
+  .mode.on { background: var(--heart-soft); color: #fca5a5; border-color: rgba(239,68,68,.35); }
+  .composer textarea { display: block; width: 100%; height: 52px; padding: 10px 14px; border: 0; outline: 0; resize: none; background: transparent; color: var(--ink); font-size: 12.5px; }
+  .composer textarea::placeholder { color: var(--ink-3); }
+  .composer-bar { display: flex; align-items: center; gap: 5px; padding: 7px 8px; border-top: 1px solid var(--line-soft); }
+  .copt { border-radius: 7px; padding: 5px 9px; color: var(--ink-3); font-size: 10.5px; }
+  .copt:hover { background: var(--card-2); color: var(--ink-2); }
+  .send { margin-left: auto; width: 30px; height: 30px; border-radius: 9px; background: var(--heart); color: #fff; font-size: 15px; box-shadow: 0 3px 12px var(--heart-glow); }
+  .hint { margin-top: 6px; text-align: center; color: #55627a; font-size: 9.5px; }
+  .hint b { color: var(--ink-3); }
+
+  /* right: context */
+  .context { border-left: 1px solid var(--line); background: var(--bg-deep); overflow-y: auto; padding: 16px; }
+  .ctx-box { border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; margin-bottom: 12px; }
+  .ctx-head { display: flex; align-items: center; gap: 8px; padding: 10px 13px; border-bottom: 1px solid var(--line-soft); font-size: 11px; font-weight: 750; }
+  .ctx-head .own { margin-left: auto; font-size: 8.5px; font-weight: 800; letter-spacing: .06em; padding: 2px 7px; border-radius: 99px; }
+  .own.you { background: var(--amber-soft); color: var(--amber); }
+  .own.agent { background: var(--blue-soft); color: var(--blue); }
+  .ctx-body { padding: 12px 13px; font-size: 11.5px; color: var(--ink-2); line-height: 1.65; }
+  .ctx-body p { margin-bottom: 7px; } .ctx-body p:last-child { margin-bottom: 0; }
+  .ctx-body ul { padding-left: 16px; display: grid; gap: 3px; margin-bottom: 7px; }
+  .ctx-body pre { margin: 7px 0; padding: 9px 11px; border-radius: 8px; overflow-x: auto; background: var(--bg); border: 1px solid var(--line-soft); color: #9fb0c8; font: 9.5px/1.6 var(--mono); }
+  .ctx-body .lbl { font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin: 10px 0 4px; }
+  .ctx-body .lbl:first-child { margin-top: 0; }
+  .ctx-empty { color: #55627a; font-style: italic; font-size: 11px; }
+  .mat { display: flex; align-items: center; gap: 9px; padding: 8px 13px; border-top: 1px solid var(--line-soft); font-size: 11px; }
+  .mat .sz { margin-left: auto; font: 9px var(--mono); color: var(--ink-3); }
+  .edit-btn { display: block; width: calc(100% - 26px); margin: 0 13px 12px; text-align: center; border: 1px solid var(--line); border-radius: 8px; padding: 6px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+  .edit-btn:hover { border-color: #35496b; color: var(--ink); }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; z-index: 90; transform: translate(-50%,14px); padding: 10px 15px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: .2s; font-size: 11.5px; }
+  .toast.show { opacity: 1; transform: translate(-50%,0); }
+
+  @media (max-width: 1150px) { .cockpit { grid-template-columns: 232px minmax(0,1fr); } .context { display: none; } }
+  @media (max-width: 800px) { .cockpit { grid-template-columns: minmax(0,1fr); } .outline { display: none; } .stepper-meta { display: none; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="logo" href="#">AI<span class="heart">♥</span>LoveCode <span class="thin">Cockpit</span></a>
+    <select class="task-switch" id="taskSwitch" aria-label="Switch task"></select>
+    <div class="top-right">
+      <span class="kbd">Ctrl K</span>
+      <span class="avatar">AL</span>
+    </div>
+  </header>
+
+  <div class="stepper-bar" id="stepper"></div>
+
+  <div class="cockpit">
+    <aside class="outline" id="outline"></aside>
+
+    <main class="flight">
+      <div class="log" id="log"><div class="log-inner" id="logInner"></div></div>
+      <div class="composer-wrap">
+        <form class="composer" id="composer">
+          <div class="modes" id="modes">
+            <button type="button" class="mode on" data-mode="discuss">💬 Discuss</button>
+            <button type="button" class="mode" data-mode="plan">🗺 Request plan</button>
+            <button type="button" class="mode" data-mode="approve">✓ Approve checkpoint</button>
+          </div>
+          <textarea id="promptBox" aria-label="Message" placeholder="Discuss the task — the agent stays in clarification mode until you request planning…"></textarea>
+          <div class="composer-bar">
+            <button type="button" class="copt">＋ Attach material</button>
+            <button class="send" aria-label="Send">↑</button>
+          </div>
+        </form>
+        <div class="hint">Planning boundary enforced: the agent won't touch <b>implementation-plan.md</b> until you explicitly request it.</div>
+      </div>
+    </main>
+
+    <aside class="context" id="context"></aside>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* REAL DATA — workflow-dev/workflow/tasks/, captured 2026-07-13 */
+const TASKS = [
+  {
+    id: "20260712T2341_webui-design-claude", name: "WebUI Design Claude",
+    created: "Jul 12, 2026 · 23:41", phase: 2, gatePassed: false,
+    context: `<p>Currently created webui for ailovecode-workflow, but need to have better ui</p>`,
+    request: `<p>Create 3 ui that you think is best for this project.</p><ul><li>Create as 3 separate html to demo the design for the webui.</li><li>Create as html with best ui/ux.</li><li>Create under <code>webui-design\\claude</code> folder.</li></ul>`,
+    reference: null,
+    understanding: {
+      summary: "The WebUI works but the user isn't satisfied with its look. Deliver multiple design directions as standalone HTML demos so a direction can be chosen for the real WebUI.",
+      reqs: ["Separate, self-contained HTML demos — no build step", "Cover the real surfaces: dashboard, task list, detail, create form", "Output under webui-design/claude in the implementation repo"],
+      clarifs: ["webui-design/claude sits next to the existing codex folder in the implementation repository"]
+    },
+    milestones: [
+      { name: "Milestone 1 — Design demos", items: [["design-1-command-deck.html", true], ["design-2-studio.html", true], ["design-3-flow.html", true]] },
+      { name: "Milestone 2 — Claude-style design", items: [["design-4-claude-style.html in Anthropic's design language", true]] },
+      { name: "Milestone 3 — Brand + real data", items: [["Adopt the codex-04 agent-workspace direction", true], ["Theme with the ailovecode.com brand", true], ["Embed actual workflow task data", true]] },
+      { name: "Milestone 4 — Variations (this round)", items: [["5A Mission Control — orchestration view", true], ["5B Task Cockpit — this page", true], ["5C Flow Command — keyboard-first", false]] }
+    ],
+    checkpoint: {
+      title: "Development Checkpoint — demos ready to validate",
+      body: "The design set is at a runnable, testable point. Open the files below in a browser and validate the direction before further rounds continue.",
+      files: ["design-5-agent-workspace.html", "design-5a-mission-control.html", "design-5b-task-cockpit.html", "design-5c-flow-command.html"]
+    },
+    materials: []
+  },
+  {
+    id: "20260712T2335_webui-design-codex", name: "WebUI Design Codex",
+    created: "Jul 12, 2026 · 23:35", phase: 2, gatePassed: false,
+    context: `<p>Currently created webui for ailovecode-workflow, but need to have better ui</p>`,
+    request: `<p>Create 3 ui that you think is best for this project. Create as 3 separate html to demo the design for the webui, under <code>webui-design\\codex</code>.</p>`,
+    reference: null,
+    understanding: {
+      summary: "Create standalone, responsive HTML prototypes that rethink the WebUI while preserving the file-based task model and ownership rules.",
+      reqs: ["Three meaningfully different directions", "Responsive, accessible, openable without a build step", "Isolated under webui-design/codex"],
+      clarifs: ["Milestone 5 (brand + real data refinement) awaits an explicit request"]
+    },
+    milestones: [
+      { name: "Milestone 1 — Product Mapping", items: [["Review existing views", true], ["Identify ownership states", true], ["Define three directions", true]] },
+      { name: "Milestone 2 — Standalone Concepts", items: [["Command Center", true], ["Editorial Workspace", true], ["Flow Board", true], ["Responsive nav + interactions", true]] },
+      { name: "Milestone 3 — Validation", items: [["HTML structure + local links", true], ["Narrow and wide viewports", true], ["Focus states + reduced motion", true], ["No implementation files modified", true]] },
+      { name: "Milestone 4 — Codex-Native Workspace", items: [["Three-pane thread/conversation/inspector layout", true], ["Planning, edits, commands, approvals in timeline", true], ["Inspector tabs + responsive panes", true], ["Desktop and narrow renders validated", true]] },
+      { name: "Milestone 5 — Brand and Real Data Refinement", items: [["AILoveCode brand atmosphere", false], ["Actual repository task data", false], ["Hierarchy + readability pass", false], ["Revalidate renders", false]] }
+    ],
+    checkpoint: {
+      title: "Development Checkpoint — 4 prototypes viewable",
+      body: "01–04 are openable and validated with Chromium renders. Milestone 5 waits behind the planning boundary.",
+      files: ["01-command-center.html", "02-editorial-workspace.html", "03-flow-board.html", "04-codex-agent-workspace.html"]
+    },
+    materials: []
+  },
+  {
+    id: "20260623T0645_webui-supporting-materials-management", name: "WebUI Supporting Materials Management",
+    created: "Jun 23, 2026 · 06:45", phase: 3, gatePassed: true,
+    context: `<p>Supporting materials can only be viewed when files already exist in the folder. There is no way to manage them from the WebUI — the filesystem is still required for screenshots, diagrams, and notes.</p>`,
+    request: `<p>Review how supporting materials should be managed from the embedded WebUI:</p><ul><li>uploading, viewing, downloading, removing</li><li>handling multiple files</li></ul><p>Files stay inside <code>supporting-materials/</code> — no cloud storage, no database.</p>`,
+    reference: `<pre>workflow/tasks/
+└── YYYYMMDDTHHMM_task-name/
+    ├── task.md
+    ├── implementation-plan.md
+    └── supporting-materials/</pre>`,
+    understanding: {
+      summary: "Close the gap: manage materials from the browser while every file remains a plain file in the task folder.",
+      reqs: ["Upload (multiple), open, download, remove", "Strictly scoped to the task's supporting-materials/", "Attach-on-create support in the New Task form"],
+      clarifs: ["No previews, tags, folders UI, or metadata in Phase 1"]
+    },
+    milestones: [
+      { name: "Milestone 1 — Upload dependency", items: [["Add multer + types", true], ["Configure simple storage strategy", true]] },
+      { name: "Milestone 2 — Safe file operations", items: [["Sanitize filenames", true], ["Unique names — no silent overwrites", true], ["Path traversal prevented", true], ["Delete files only, never directories", true]] },
+      { name: "Milestone 3 — Upload/delete routes", items: [["POST /tasks/:taskId/materials", true], ["POST /tasks/:taskId/materials/delete", true], ["Redirects back to detail", true]] },
+      { name: "Milestone 4 — Materials UI", items: [["Upload form in the card", true], ["Open/Download/Remove per file", true]] },
+      { name: "Milestone 5 — Create-task uploads", items: [["File input before Reference", true], ["Generated paths shown for copying", true]] },
+      { name: "Milestone 6 — Build and verify", items: [["npm run build passed", true], ["Traversal rejection tested (../task.md)", true]] }
+    ],
+    checkpoint: {
+      title: "Checkpoint validated — upload flow live",
+      body: "Upload, duplicate-name handling, open/download, delete, and traversal rejection all tested in a temporary workflow at localhost:4111.",
+      files: ["src/web/server.ts", "src/web/views.ts", "src/workflow/tasks.ts"]
+    },
+    materials: [{ name: "image.png", size: "41.5 KB" }]
+  },
+  {
+    id: "20260623T0606_webui-task-creation", name: "WebUI Task Creation",
+    created: "Jun 23, 2026 · 06:06", phase: 3, gatePassed: true,
+    context: `<p>Creating a task still requires the CLI: <code>npx ailovecode-workflow create-task "task-name"</code> — a disconnect from the WebUI.</p>`,
+    request: `<p>Integrate task creation into the WebUI: creation workflow, required inputs, naming, folder generation, validation, and navigation after creation.</p>`,
+    reference: `<p>Principles: lightweight, file-based, local-first; task.md human-owned, plan AI-owned.</p>`,
+    understanding: {
+      summary: "One creation path for CLI and WebUI, producing the standard YYYYMMDDTHHMM_name folder with template sections.",
+      reqs: ["Shared createWorkflowTask() used by both entry points", "Standard template; empty implementation-plan.md", "Redirect to the new task after creation"],
+      clarifs: []
+    },
+    milestones: [
+      { name: "Milestone 1 — Shared creation logic", items: [["createWorkflowTask() + kebab-case + timestamps", true], ["Empty plan file, supporting-materials/ created", true]] },
+      { name: "Milestone 2 — CLI uses shared logic", items: [["Refactor create-task.ts", true], ["Preserve output + errors", true]] },
+      { name: "Milestone 3 — New Task form", items: [["renderTaskNew() with all sections", true], ["Validation errors; entry points on List + Dashboard", true]] },
+      { name: "Milestone 4 — Create routes", items: [["GET/POST /tasks/new", true], ["Re-render with values on validation failure", true]] },
+      { name: "Milestone 5 — Build and verify", items: [["Build passed; CLI + WebUI creation tested", true]] }
+    ],
+    checkpoint: {
+      title: "Checkpoint validated — form live at /tasks/new",
+      body: "CLI and WebUI task creation tested in a temporary workflow; redirects and validation verified.",
+      files: ["src/workflow/tasks.ts", "src/commands/create-task.ts", "src/web/server.ts"]
+    },
+    materials: []
+  },
+  {
+    id: "20260623T0402_embedded-webui-task-list-improvements", name: "Embedded WebUI Task List Improvements",
+    created: "Jun 23, 2026 · 04:02", phase: 3, gatePassed: true,
+    context: `<p>After creating and using multiple tasks, the Task List feels basic and may become harder to use as task count grows.</p>`,
+    request: `<p>Improve task discovery, navigation, information visibility, scalability, and workflow efficiency — while staying file-based, local-first, lightweight.</p>`,
+    reference: `<p>A better read-only index over workflow/tasks/ — not a project management platform.</p>`,
+    understanding: {
+      summary: "Richer, searchable task rows derived only from files that already exist — no new metadata.",
+      reqs: ["Request/Context preview per row", "task.md / plan / materials badges", "Client-side search with counts"],
+      clarifs: ["No statuses, tags, priorities, or persisted UI state"]
+    },
+    milestones: [
+      { name: "Milestone 1 — Derived summary fields", items: [["Preview from ## Request → ## Context", true], ["Plan/material detection", true]] },
+      { name: "Milestone 2 — Richer rows", items: [["Name primary, folder secondary, timestamp right", true], ["Badges + preview", true]] },
+      { name: "Milestone 3 — Search/filter UX", items: [["Filter by name/ID/timestamp/preview", true], ["Counts + no-results state", true]] },
+      { name: "Milestone 4 — Polish + build", items: [["Empty states; npm run build", true]] }
+    ],
+    checkpoint: {
+      title: "Checkpoint validated — search live at /tasks",
+      body: "Search by title, folder ID, and preview verified; badges and empty states reviewed.",
+      files: ["src/workflow/tasks.ts", "src/web/views.ts"]
+    },
+    materials: []
+  },
+  {
+    id: "20260622T1522_embedded-webui-file-mode", name: "Embedded WebUI File Mode",
+    created: "Jun 22, 2026 · 15:22", phase: 3, gatePassed: true,
+    context: `<p>AILoveCode Workflow provides a CLI experience today. An embedded local WebUI improves usability while staying lightweight, local-first, file-based — no database, auth, AI integration, or cloud.</p>`,
+    request: `<p>Implement <code>npx ailovecode-workflow serve</code> — TypeScript, Express, Tailwind, server-rendered pages, no React. Dashboard, task list, detail, task.md editing, read-only plan, materials, guidelines.</p>`,
+    reference: `<pre>workflow/
+├── guidelines.md
+└── tasks/YYYYMMDDTHHMM_task-name/</pre>`,
+    understanding: {
+      summary: "Phase 1 WebUI serving the workflow folder directly at http://localhost:4111 with the ownership rules enforced in the UI.",
+      reqs: ["serve command with printed URL", "Section-based task.md editing only", "implementation-plan.md strictly read-only"],
+      clarifs: []
+    },
+    milestones: [
+      { name: "Milestone 1 — TypeScript CLI foundation", items: [["Build setup; CLI ported to TS", true]] },
+      { name: "Milestone 2 — File-based services", items: [["Path detection, listing, validation", true], ["Section parser + writer", true], ["Safe material path resolution", true]] },
+      { name: "Milestone 3 — Express server + routes", items: [["All core routes", true], ["Clear error when workflow/ missing", true]] },
+      { name: "Milestone 4 — Views + Tailwind", items: [["Layout helper; all pages styled", true], ["No React", true]] },
+      { name: "Milestone 5 — Validation + packaging", items: [["Routes validated with curl", true], ["README + npm pack verified", true]] }
+    ],
+    checkpoint: {
+      title: "Checkpoint validated — serve runs end-to-end",
+      body: "Smoke test: init → create-task → serve in a temp folder; all routes validated with curl.",
+      files: ["src/commands/serve.ts", "src/web/server.ts", "src/web/views.ts"]
+    },
+    materials: []
+  }
+];
+
+const STEPS = ["Understanding", "Planning", "Implementing", "Done"];
+const STEP_SUBS = ["task.md written", "plan approved", "milestones in motion", "validated"];
+const $ = s => document.querySelector(s);
+let current = TASKS[0];
+
+function notify(t) { const el = $("#toast"); el.textContent = t; el.classList.add("show"); clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove("show"), 2300); }
+function stats(t) {
+  const items = t.milestones.flatMap(m => m.items);
+  const done = items.filter(i => i[1]).length;
+  return { done, total: items.length, pct: Math.round(done / items.length * 100), msDone: t.milestones.filter(m => m.items.every(i => i[1])).length };
+}
+
+function render() {
+  const t = current, s = stats(t);
+
+  /* stepper */
+  $("#stepper").innerHTML = STEPS.map((lbl, i) => {
+    const cls = i < t.phase ? "done" : i === t.phase ? "now" : "";
+    return `${i ? `<span class="step-link ${i <= t.phase ? "done" : ""}"></span>` : ""}
+      <span class="step ${cls}"><span class="ball">${i < t.phase ? "✓" : i + 1}</span>
+      <span class="lbl">${lbl}<span class="sub">${STEP_SUBS[i]}</span></span></span>`;
+  }).join("") + `<span class="stepper-meta">workflow/tasks/${t.id}</span>`;
+
+  /* outline */
+  $("#outline").innerHTML = `
+    <div class="o-title">Plan progress</div>
+    <div class="o-progress"><div class="nums"><span>${s.msDone}/${t.milestones.length} milestones</span><span>${s.pct}%</span></div>
+      <div class="bar"><i style="width:${s.pct}%"></i></div></div>
+    <div class="o-title">Milestones</div>
+    ${t.milestones.map((m, i) => {
+      const d = m.items.filter(x => x[1]).length;
+      return `<button class="o-ms ${d === m.items.length ? "done" : ""}" onclick="jumpMs(${i})">
+        <span class="chk">${d === m.items.length ? "✓" : ""}</span>
+        <span>${m.name.replace(/^Milestone \d+ — /, "")}<span class="n">${d}/${m.items.length} checked</span></span></button>`;
+    }).join("")}
+    <div class="o-divider"></div>
+    <div class="o-title">Jump to</div>
+    <button class="o-jump" onclick="notify('Demo: scrolls to the understanding response')">◇ Understanding</button>
+    <button class="o-jump" onclick="notify('Demo: scrolls to the plan card')">▤ Implementation plan</button>
+    <button class="o-jump" onclick="notify('Demo: scrolls to the checkpoint')">◈ Checkpoint</button>`;
+
+  /* flight log */
+  $("#logInner").innerHTML = `
+    <article class="entry"><span class="badge">You</span><div>
+      <div class="who">You <time>${t.created}</time></div>
+      <div class="bubble">${t.request}<div class="src">from <b>## Request</b> · task.md — human-owned</div></div>
+    </div></article>
+
+    <article class="entry"><span class="badge ai">A</span><div>
+      <div class="who">Agent <time>${t.created}</time></div>
+      <div class="bubble"><p>Here's my understanding of the task before any planning happens.</p></div>
+      <div class="card-x">
+        <div class="card-x-head">Task Understanding Response <span class="tag violet">discussion mode</span></div>
+        <div class="card-x-body">
+          <div class="h">Summary</div><p>${t.understanding.summary}</p>
+          <div class="h">Key requirements</div><ul>${t.understanding.reqs.map(r => `<li>${r}</li>`).join("")}</ul>
+          ${t.understanding.clarifs.length ? `<div class="h">Clarifications</div><ul>${t.understanding.clarifs.map(c => `<li>${c}</li>`).join("")}</ul>` : ""}
+          <div class="h">Next step</div><p>Remaining in discussion mode — say <code>create an implementation plan</code> to cross the planning boundary.</p>
+        </div>
+      </div>
+    </div></article>
+
+    <article class="entry"><span class="badge ai">A</span><div>
+      <div class="who">Agent <time>${t.created}</time></div>
+      <div class="card-x" id="planCard">
+        <div class="card-x-head">Implementation plan <span class="tag blue">AI-owned · read-only</span>
+          <span class="right">${s.msDone}/${t.milestones.length} milestones · ${s.pct}%</span></div>
+        <div class="pc-bar"><i style="width:${s.pct}%"></i></div>
+        ${t.milestones.map((m, i) => {
+          const allDone = m.items.every(x => x[1]);
+          const n = m.items.filter(x => x[1]).length;
+          return `<div class="ms-row ${allDone ? "done" : "open"}" data-ms="${i}">
+            <button class="ms-row-btn" onclick="this.parentElement.classList.toggle('open')">
+              <span class="ms-chk ${allDone ? "done" : ""}">${allDone ? "✓" : ""}</span>
+              <strong>${m.name}</strong><span class="n">${n}/${m.items.length}</span><span class="chev">›</span></button>
+            <div class="ms-detail">${m.items.map(([l, d]) => `<div class="mi ${d ? "done" : ""}"><span class="bx">${d ? "✓" : ""}</span><span>${l}</span></div>`).join("")}</div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div></article>
+
+    <article class="entry"><span class="badge sys">◈</span><div>
+      <div class="who">Workflow gate <time>${t.created}</time></div>
+      <div class="gate ${t.gatePassed ? "passed" : ""}">
+        <div class="gate-head">
+          <span class="gate-icon">${t.gatePassed ? "✓" : "◈"}</span>
+          <div><h3>${t.checkpoint.title}</h3><div class="sub2">${t.checkpoint.body}</div></div>
+          ${t.gatePassed ? `<span class="stamp">VALIDATED ✓</span>` : ""}
+        </div>
+        <div class="gate-files">${t.checkpoint.files.map(f => `<span class="fchip"><i>◆</i>${f}</span>`).join("")}</div>
+        ${t.gatePassed ? `<div style="height:14px"></div>` : `
+        <div class="gate-actions">
+          <button class="btn primary" onclick="notify('Demo: checkpoint validated — the agent continues')">Validated — continue</button>
+          <button class="btn" onclick="notify('Demo: opens the feedback composer')">Request changes</button>
+        </div>`}
+      </div>
+    </div></article>`;
+
+  /* right context */
+  $("#context").innerHTML = `
+    <div class="ctx-box">
+      <div class="ctx-head">task.md <span class="own you">YOURS</span></div>
+      <div class="ctx-body">
+        <div class="lbl">Context</div>${t.context}
+        <div class="lbl">Request</div>${t.request}
+        <div class="lbl">Reference</div>${t.reference || `<p class="ctx-empty">No reference material added.</p>`}
+      </div>
+      <button class="edit-btn" onclick="notify('Demo: opens section-based task.md editing')">Edit sections</button>
+    </div>
+    <div class="ctx-box">
+      <div class="ctx-head">Materials <span class="own agent" style="background:var(--card-2);color:var(--ink-3)">${t.materials.length} FILES</span></div>
+      ${t.materials.length ? t.materials.map(f => `<div class="mat"><span>▣</span><span>${f.name}</span><span class="sz">${f.size}</span></div>`).join("")
+        : `<div class="ctx-body"><p class="ctx-empty">Nothing in supporting-materials/ yet.</p></div>`}
+      <button class="edit-btn" onclick="notify('Demo: opens the upload picker')">＋ Add materials</button>
+    </div>
+    <div class="ctx-box">
+      <div class="ctx-head">Ownership</div>
+      <div class="ctx-body">
+        <p><span class="own you" style="margin-right:6px">YOURS</span>task.md — never rewritten silently.</p>
+        <p><span class="own agent" style="margin-right:6px">AGENT</span>implementation-plan.md — read-only here.</p>
+      </div>
+    </div>`;
+  $("#log").scrollTop = 0;
+}
+
+function jumpMs(i) {
+  const el = document.querySelector(`[data-ms="${i}"]`);
+  if (el) { el.classList.add("open"); el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+}
+
+/* task switcher */
+const sw = $("#taskSwitch");
+sw.innerHTML = TASKS.map(t => `<option value="${t.id}">${t.name} — ${t.phase === 3 ? "done" : "in progress"}</option>`).join("");
+sw.addEventListener("change", () => { current = TASKS.find(t => t.id === sw.value); render(); });
+
+/* composer modes */
+const PLACEHOLDERS = {
+  discuss: "Discuss the task — the agent stays in clarification mode until you request planning…",
+  plan: "“Create an implementation plan for this task.” — crosses the planning boundary explicitly",
+  approve: "Confirm the checkpoint: what you tested and whether the agent should continue…"
+};
+document.querySelectorAll(".mode").forEach(m => m.addEventListener("click", () => {
+  document.querySelectorAll(".mode").forEach(x => x.classList.toggle("on", x === m));
+  $("#promptBox").placeholder = PLACEHOLDERS[m.dataset.mode];
+}));
+$("#composer").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = $("#promptBox").value.trim(); if (!v) return;
+  $("#promptBox").value = "";
+  notify("Demo: message routed by mode — discussion, explicit planning request, or checkpoint approval");
+});
+
+render();
+</script>
+</body>
+</html>

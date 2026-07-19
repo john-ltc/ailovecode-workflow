@@ -1,0 +1,1601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design 8 · Agent Hub — AILoveCode Workflow</title>
+<style>
+  :root {
+    --bg: #111827; --bg-deep: #0d1420; --card: #162131; --card-2: #1b2839;
+    --line: #24334a; --line-soft: #1d2a3d;
+    --ink: #f8fafc; --ink-2: #c3cbd8; --ink-3: #8b96a8;
+    --heart: #ef4444; --heart-soft: #3a1d26; --heart-glow: rgba(239,68,68,.35);
+    --green: #34d399; --green-soft: #143327;
+    --blue: #60a5fa; --blue-soft: #16263e;
+    --amber: #fbbf24; --amber-soft: #33290f;
+    --violet: #a78bfa;
+    --sans: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    --shadow: 0 24px 70px rgba(5,10,20,.55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 13px/1.6 var(--sans); overflow: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: none; }
+  :focus-visible { outline: 2px solid var(--heart); outline-offset: 2px; }
+  ::selection { background: rgba(239,68,68,.3); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: #2b3b55; border-radius: 99px; border: 2px solid var(--bg); }
+
+  .app { height: 100vh; display: grid; grid-template-rows: 54px minmax(0,1fr); }
+
+  /* ================= TOP BAR ================= */
+  .top { display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--line); background: rgba(17,24,39,.78); backdrop-filter: blur(14px); z-index: 30; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; }
+  .logo .heart { color: var(--heart); filter: drop-shadow(0 0 8px var(--heart-glow)); }
+  .logo .thin { color: var(--ink-3); font-weight: 500; }
+  .top-div { width: 1px; height: 22px; background: var(--line); margin: 0 2px; flex-shrink: 0; }
+  .git-line { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font: 11px var(--mono); }
+  .git-line:hover { color: var(--ink-2); }
+  .git-line .dirty { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); margin-left: 4px; }
+  .serve-chip { display: flex; align-items: center; gap: 7px; color: var(--ink-3); font: 10px var(--mono); }
+  .serve-chip i { font-style: normal; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: livepulse 1.8s infinite; }
+  @keyframes livepulse { 50% { box-shadow: 0 0 0 4px rgba(52,211,153,.15); } }
+  .top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .icon-btn { width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink-3); }
+  .icon-btn:hover { color: var(--ink); border-color: #35496b; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--heart), #b91c1c); color: #fff; font-size: 10.5px; font-weight: 800; }
+  .mobile-only { display: none; }
+
+  /* ================= 3-PANE GRID ================= */
+  .shell { min-height: 0; display: grid; grid-template-columns: 246px 302px minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
+
+  /* ---- pane 1: tasks ---- */
+  .tasks-pane { border-right: 1px solid var(--line); background: var(--bg-deep); display: flex; flex-direction: column; min-width: 0; }
+  .tasks-head { padding: 13px 14px 10px; }
+  .tasks-head .row { display: flex; align-items: center; justify-content: space-between; }
+  .tasks-head h2 { font-size: 13px; font-weight: 750; }
+  .tasks-head .count { font: 10px var(--mono); color: var(--ink-3); }
+  .new-mini { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; margin-top: 10px; background: var(--heart); color: #fff; border-radius: 9px; padding: 7px; font-weight: 700; font-size: 12px; box-shadow: 0 4px 18px var(--heart-glow); }
+  .new-mini:hover { filter: brightness(1.1); }
+  .search { margin-top: 10px; display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  .search:focus-within { border-color: var(--heart); box-shadow: 0 0 0 3px rgba(239,68,68,.15); }
+  .search input { flex: 1; border: none; background: none; outline: none; color: var(--ink); font-size: 12px; min-width: 0; }
+  .search input::placeholder { color: #55627a; }
+  .search .ic { color: #55627a; font-size: 12px; }
+  .list-scroll { overflow-y: auto; flex: 1; min-height: 0; padding: 2px 8px 10px; }
+  .t-row { width: 100%; text-align: left; padding: 8.5px 10px; border-radius: 9px; border: 1px solid transparent; margin-bottom: 1px; }
+  .t-row:hover { background: var(--card); }
+  .t-row.sel { background: var(--card); border-color: var(--line); box-shadow: inset 2px 0 0 var(--heart); }
+  .t-row .r1 { display: flex; align-items: center; gap: 8px; }
+  .t-row .r1 .nm { flex: 1; min-width: 0; font-size: 12px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .t-row.sel .r1 .nm { color: #fda4af; }
+  .t-row .r1 .when { font: 9px var(--mono); color: #55627a; flex-shrink: 0; }
+  .t-row small { display: block; margin: 2px 0 0 15px; color: var(--ink-3); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .group { margin: 11px 8px 4px; color: #55627a; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .list-empty { padding: 24px 14px; text-align: center; color: var(--ink-3); font-size: 12px; font-style: italic; }
+  .ph-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .ph-implementation { background: var(--heart); box-shadow: 0 0 0 3px rgba(239,68,68,.15); }
+  .ph-done { background: var(--green); }
+
+
+  /* ---- pane 2: section menu (design-3 list layout) ---- */
+  .section-menu { border-right: 1px solid var(--line); background: var(--bg); display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
+  .task-mini { padding: 14px 16px 12px; border-bottom: 1px solid var(--line-soft); }
+  .task-mini .lbl { font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #55627a; }
+  .task-mini .nm { display: flex; align-items: flex-start; gap: 7px; margin-top: 6px; font-size: 12.5px; font-weight: 700; line-height: 1.35; }
+  .task-mini .nm .ph-dot { margin-top: 5px; }
+  .sec-btn { display: block; width: 100%; text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line-soft); color: var(--ink-2); transition: background .12s; }
+  .sec-btn:hover { background: var(--card); color: var(--ink); }
+  .sec-btn.active { background: rgba(239,68,68,.08); color: var(--ink); box-shadow: inset 2.5px 0 0 var(--heart); }
+  .sec-btn .r { display: flex; align-items: center; gap: 9px; font-size: 12.5px; font-weight: 650; }
+  .sec-btn .ic { width: 15px; text-align: center; font-size: 11.5px; color: var(--ink-3); }
+  .sec-btn.active .ic { color: #fca5a5; }
+  .sec-btn.active .r { color: #fda4af; }
+  .sec-btn .n { margin-left: auto; font: 9.5px var(--mono); color: var(--ink-3); }
+  .sec-btn .n.hot { color: #fca5a5; }
+  .sec-btn .desc { display: block; margin: 3px 0 0 24px; font-size: 10.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .menu-label { padding: 16px 16px 6px; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #55627a; }
+
+
+  /* ---- pane 3: page ---- */
+  .work { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr) auto; background: var(--bg); }
+  .work-head { padding: 15px 26px 13px; border-bottom: 1px solid var(--line); }
+  .crumb { font: 10.5px var(--mono); color: #55627a; }
+  .crumb b { color: var(--ink-3); font-weight: 600; }
+  .work-title-row { display: flex; align-items: center; gap: 12px; margin-top: 5px; }
+  .work-title-row h1 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .state-pill { flex-shrink: 0; padding: 3px 10px; border-radius: 99px; font-size: 10px; font-weight: 750; display: flex; align-items: center; gap: 6px; }
+  .state-pill::before { content: ""; width: 5px; height: 5px; border-radius: 50%; }
+  .state-pill.active { background: var(--heart-soft); color: #fca5a5; } .state-pill.active::before { background: var(--heart); }
+  .state-pill.done { background: var(--green-soft); color: var(--green); } .state-pill.done::before { background: var(--green); }
+  .work-title-row .spacer { flex: 1; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; border-radius: 8px; padding: 6px 13px; font-size: 12px; font-weight: 700; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); flex-shrink: 0; }
+  .btn:hover { border-color: #35496b; color: var(--ink); }
+
+  .work-body { overflow-y: auto; min-height: 0; padding: 22px clamp(18px, 3vw, 44px); }
+  .work-inner { width: min(760px, 100%); margin: 0 auto; }
+  .work-inner.full { width: 100%; }
+
+  /* ---- changes: GitHub Desktop-style split ---- */
+  .gh { display: grid; grid-template-columns: 264px minmax(0,1fr); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); }
+  .gh-files { border-right: 1px solid var(--line); background: var(--bg); overflow-y: auto; max-height: 600px; }
+  .gh-files-head { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); font-size: 11px; font-weight: 750; color: var(--ink-2); position: sticky; top: 0; background: var(--bg); z-index: 1; }
+  .gh-file { width: 100%; text-align: left; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); font: 10.5px var(--mono); color: var(--ink-2); }
+  .gh-file:hover { background: var(--card); }
+  .gh-file.sel { background: rgba(239,68,68,.08); box-shadow: inset 2px 0 0 var(--heart); color: var(--ink); }
+  .gh-file .p { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+  .gh-file .st { flex-shrink: 0; width: 16px; height: 16px; border-radius: 4px; display: grid; place-items: center; font-size: 10px; font-weight: 800; }
+  .st.a { background: var(--green-soft); color: var(--green); border: 1px solid rgba(52,211,153,.4); }
+  .st.m { background: var(--amber-soft); color: var(--amber); border: 1px solid rgba(251,191,36,.4); }
+  .gh-diff { display: flex; flex-direction: column; min-width: 0; }
+  .gh-diff-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); font: 10.5px var(--mono); color: var(--ink-2); background: var(--card); }
+  .gh-diff-head .fp { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gh-diff-head .plus { color: var(--green); font-weight: 700; }
+  .gh-diff-head .minus { color: #f87171; font-weight: 700; }
+  .gh-diff-body { overflow: auto; max-height: 560px; font: 10.5px/1.75 var(--mono); background: var(--bg-deep); }
+  .hunk { padding: 3px 14px; background: var(--blue-soft); color: var(--blue); font-size: 10px; }
+  .dline { display: grid; grid-template-columns: 46px 22px minmax(0,1fr); }
+  .dline .no { text-align: right; padding-right: 9px; color: #44536e; user-select: none; background: var(--bg); border-right: 1px solid var(--line-soft); }
+  .dline .mark { text-align: center; color: var(--ink-3); }
+  .dline .code { white-space: pre; padding-right: 16px; color: var(--ink-2); }
+  .dline.add { background: rgba(52,211,153,.07); }
+  .dline.add .no { background: rgba(52,211,153,.09); }
+  .dline.add .mark { color: var(--green); }
+  .dline.add .code { color: #bfe8d2; }
+  .dline.del { background: rgba(239,68,68,.08); }
+  .dline.del .no { background: rgba(239,68,68,.10); }
+  .dline.del .mark { color: #f87171; }
+  .dline.del .code { color: #f0b9be; }
+  .dline .code.etc { color: #55627a; font-style: italic; }
+
+  /* ---- shared content styles ---- */
+  .msg { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 12px; margin-bottom: 24px; }
+  .speaker { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 9px; display: grid; place-items: center; background: var(--card); font-size: 10px; font-weight: 800; color: var(--ink-2); }
+  .speaker.ai { background: var(--heart); border-color: var(--heart); color: #fff; box-shadow: 0 3px 14px var(--heart-glow); }
+  .who { display: flex; gap: 9px; align-items: baseline; margin: 2px 0 8px; font-size: 11px; font-weight: 750; }
+  .who time { color: var(--ink-3); font-weight: 400; font-size: 10px; }
+  .bubble { padding: 13px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink-2); font-size: 12.5px; }
+  .bubble p { margin-bottom: 9px; } .bubble p:last-child { margin-bottom: 0; }
+  .bubble ul { padding-left: 19px; display: grid; gap: 3px; margin-bottom: 9px; }
+  .bubble.you-chat { background: var(--card-2); }
+  code { font: 11px var(--mono); background: var(--bg-deep); border: 1px solid var(--line-soft); border-radius: 5px; padding: 1px 6px; color: #fda4af; }
+  .src-chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 4px 9px; border-radius: 7px; background: var(--bg-deep); border: 1px solid var(--line-soft); color: var(--ink-3); font: 10px var(--mono); }
+  .src-chip b { color: var(--amber); font-weight: 600; }
+  .agent-note { margin: 12px 0; padding-left: 13px; border-left: 2px solid #3b4d6b; color: var(--ink-3); font-size: 12px; }
+  .agent-note strong { color: var(--ink-2); }
+  .save-line { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+  .save-line button { font-size: 10px; font-weight: 700; color: var(--ink-3); }
+  .save-line button:hover { color: #fda4af; }
+  .chat-session-note { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; padding: 8px 12px; border: 1px dashed #33415c; border-radius: 9px; color: var(--ink-3); font: 10px var(--mono); }
+  .chat-session-note b { color: #fda4af; font-weight: 600; }
+
+  .plan-card { margin: 14px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; }
+  .plan-card-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; font-weight: 750; }
+  .plan-card-head .tag { font-size: 9px; font-weight: 750; padding: 2px 8px; border-radius: 99px; background: var(--blue-soft); color: var(--blue); }
+  .plan-card-head .steps { margin-left: auto; color: var(--ink-3); font: 10px var(--mono); font-weight: 400; }
+  .pc-bar { height: 4px; background: var(--bg-deep); }
+  .pc-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--heart), #f87171); }
+  .ms { border-bottom: 1px solid var(--line-soft); } .ms:last-child { border-bottom: none; }
+  .ms-btn { width: 100%; display: grid; grid-template-columns: 20px minmax(0,1fr) auto 14px; gap: 9px; align-items: center; padding: 10px 14px; text-align: left; }
+  .ms-btn:hover { background: var(--card-2); }
+  .ms-check { width: 16px; height: 16px; border: 1px solid #3b4d6b; border-radius: 5px; display: grid; place-items: center; color: var(--green); font-size: 9.5px; }
+  .ms-check.done { border-color: rgba(52,211,153,.5); background: var(--green-soft); }
+  .ms-btn strong { font-size: 11.5px; font-weight: 650; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ms.done .ms-btn strong { color: var(--ink-3); }
+  .ms-btn .n { color: var(--ink-3); font: 9.5px var(--mono); }
+  .ms-btn .chev { color: var(--ink-3); font-size: 10px; transition: transform .15s; }
+  .ms.open .ms-btn .chev { transform: rotate(90deg); }
+  .ms-items { display: none; padding: 3px 14px 11px 43px; }
+  .ms.open .ms-items { display: block; }
+  .ms-item { display: grid; grid-template-columns: 16px minmax(0,1fr); gap: 8px; padding: 3.5px 0; font-size: 11px; color: var(--ink-3); }
+  .ms-item .bx { width: 13px; height: 13px; margin-top: 3px; border: 1px solid #3b4d6b; border-radius: 4px; display: grid; place-items: center; font-size: 8px; line-height: 1; color: var(--green); }
+  .ms-item.done .bx { background: var(--green-soft); border-color: rgba(52,211,153,.5); }
+  .ms-item.done span:last-child { text-decoration: line-through; text-decoration-color: #33415c; }
+
+  .sec-title { margin: 16px 0 7px; color: var(--ink-3); font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .sec-title:first-child { margin-top: 0; }
+  .md { font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
+  .md p { margin-bottom: 8px; }
+  .md ul { margin: 5px 0 8px; padding-left: 17px; display: grid; gap: 3px; }
+  .md pre { margin: 8px 0; padding: 10px 12px; border-radius: 8px; overflow-x: auto; background: var(--bg-deep); border: 1px solid var(--line-soft); color: #9fb0c8; font: 10px/1.6 var(--mono); }
+  .empty-box { padding: 12px; border: 1px dashed #33415c; border-radius: 9px; color: var(--ink-3); font-size: 11px; }
+  .own-box { margin-bottom: 14px; padding: 11px 12px; border-radius: 10px; border: 1px solid; font-size: 10.5px; }
+  .own-box.human { border-color: rgba(251,191,36,.35); background: var(--amber-soft); }
+  .own-box.human strong { color: var(--amber); }
+  .own-box.ai-owned { border-color: rgba(96,165,250,.3); background: var(--blue-soft); }
+  .own-box.ai-owned strong { color: var(--blue); }
+  .own-box strong { display: block; }
+  .own-box p { margin-top: 4px; color: var(--ink-3); }
+  .files-strip { margin: 12px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .file-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg-deep); font: 10px var(--mono); color: var(--ink-2); }
+  .file-chip i { font-style: normal; color: var(--green); font-weight: 700; font-size: 9px; }
+  .chg-row { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line-soft); font: 10.5px var(--mono); color: var(--ink-2); }
+  .chg-row:last-child { border-bottom: none; }
+  .chg-badge { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font: 800 9px var(--sans); flex-shrink: 0; }
+  .chg-badge.a { background: var(--green-soft); color: var(--green); }
+  .chg-badge.m { background: var(--amber-soft); color: var(--amber); }
+  .chg-note { margin-top: 12px; padding: 10px 12px; border-radius: 9px; background: var(--card); border: 1px solid var(--line-soft); color: var(--ink-3); font-size: 10.5px; }
+  .mat-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--line-soft); }
+  .mat-item:last-child { border-bottom: none; }
+  .mat-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: grid; place-items: center; font: 8.5px var(--mono); color: var(--ink-3); flex-shrink: 0; }
+  .mat-item .nm { font-size: 11.5px; font-weight: 650; }
+  .mat-item .pth { font: 9px var(--mono); color: var(--ink-3); }
+  .mat-item .sz { margin-left: auto; font: 9.5px var(--mono); color: var(--ink-3); }
+  .mat-actions { display: flex; gap: 10px; margin-top: 2px; }
+  .mat-actions a { font-size: 10px; font-weight: 700; color: #fda4af; }
+  .mat-actions a:hover { text-decoration: underline; }
+  .upload-box { margin-top: 12px; padding: 16px; border: 1.5px dashed #33415c; border-radius: 10px; text-align: center; color: var(--ink-3); font-size: 10.5px; }
+  .upload-box b { color: #fda4af; }
+  .commit { display: grid; grid-template-columns: 14px minmax(0,1fr); gap: 10px; padding: 8px 0; position: relative; }
+  .commit::before { content: ""; position: absolute; left: 5.5px; top: 22px; bottom: -8px; width: 1.5px; background: var(--line); }
+  .commit:last-child::before { display: none; }
+  .commit .c-dot { width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--heart); background: var(--bg-deep); margin-top: 4px; }
+  .commit .c-msg { font-size: 11px; color: var(--ink-2); font-weight: 600; }
+  .commit .c-meta { font: 9.5px var(--mono); color: var(--ink-3); margin-top: 1px; }
+  .ring-row { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--card); margin-bottom: 14px; }
+  .ring { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
+  .ring::after { content: attr(data-pct); width: 33px; height: 33px; border-radius: 50%; display: grid; place-items: center; background: var(--card); font: 700 9px var(--sans); color: var(--ink); }
+  .ring-row strong { display: block; font-size: 11.5px; }
+  .ring-row small { color: var(--ink-3); font-size: 10px; }
+
+  /* composer */
+  .composer-wrap { padding: 12px clamp(16px, 3vw, 44px) 15px; background: linear-gradient(transparent, var(--bg) 30%); }
+  .composer { width: min(760px, 100%); margin: 0 auto; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 10px 34px rgba(5,10,20,.4); overflow: hidden; }
+  .composer:focus-within { border-color: #3d5278; }
+  .composer textarea { display: block; width: 100%; height: 54px; padding: 12px 15px; border: 0; outline: 0; resize: none; background: transparent; color: var(--ink); font-size: 12.5px; }
+  .composer textarea::placeholder { color: var(--ink-3); }
+  .composer-bar { display: flex; align-items: center; gap: 4px; padding: 7px 8px; border-top: 1px solid var(--line-soft); }
+  .composer-opt { border-radius: 7px; padding: 5px 9px; color: var(--ink-3); font-size: 10.5px; }
+  .composer-opt:hover { background: var(--card-2); color: var(--ink-2); }
+  .send { margin-left: auto; width: 30px; height: 30px; border-radius: 9px; background: var(--heart); color: #fff; font-size: 15px; box-shadow: 0 3px 12px var(--heart-glow); }
+  .send:hover { filter: brightness(1.1); }
+  .composer-hint { margin-top: 7px; text-align: center; color: #55627a; font-size: 9.5px; }
+  .composer-hint b { color: var(--ink-3); }
+
+  /* ================= AGENT HUB ADDITIONS ================= */
+  /* top bar: agent status cluster + approvals */
+  .agents-cluster { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); }
+  .agent-pip { position: relative; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; color: #fff; padding: 0; }
+  .agent-pip::after { content: ""; position: absolute; right: -1.5px; bottom: -1.5px; width: 7px; height: 7px; border-radius: 50%; border: 2px solid var(--bg); background: #55627a; }
+  .agent-pip.st-running::after { background: var(--green); animation: livepulse 1.8s infinite; }
+  .agent-pip.st-awaiting::after { background: var(--amber); animation: livepulse 1.2s infinite; }
+  .agent-pip.st-offline { opacity: .45; }
+  .agent-pip:hover { transform: translateY(-1px); }
+  .approvals-btn { position: relative; display: flex; align-items: center; gap: 7px; padding: 5px 11px; border: 1px solid rgba(251,191,36,.45); border-radius: 99px; background: var(--amber-soft); color: var(--amber); font-size: 10.5px; font-weight: 750; }
+  .approvals-btn .bdg { display: grid; place-items: center; min-width: 15px; height: 15px; border-radius: 99px; background: var(--amber); color: #1a1405; font-size: 9px; font-weight: 800; padding: 0 4px; }
+  .approvals-btn:hover { filter: brightness(1.15); }
+  .kbd { font: 9.5px var(--mono); color: var(--ink-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 5px; background: var(--bg-deep); }
+
+  /* agent identity badges */
+  .agent-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 99px; font-size: 9.5px; font-weight: 750; border: 1px solid var(--line); background: var(--bg-deep); color: var(--ink-2); }
+  .agent-badge i { font-style: normal; width: 12px; height: 12px; border-radius: 50%; display: grid; place-items: center; font-size: 6.5px; font-weight: 800; color: #fff; }
+  .t-row .agent-badge { margin: 3px 0 0 15px; }
+
+  /* run timeline */
+  .run-head-card { display: flex; align-items: center; gap: 12px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); margin-bottom: 18px; flex-wrap: wrap; }
+  .run-head-card .av { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .run-head-card strong { display: block; font-size: 12.5px; }
+  .run-head-card small { color: var(--ink-3); font: 10px var(--mono); }
+  .run-head-card .sp { flex: 1; }
+  .run-state { padding: 3px 10px; border-radius: 99px; font-size: 10px; font-weight: 750; display: inline-flex; align-items: center; gap: 6px; }
+  .run-state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .run-state.streaming { background: var(--green-soft); color: var(--green); }
+  .run-state.streaming::before { animation: livepulse 1.4s infinite; }
+  .run-state.awaiting { background: var(--amber-soft); color: var(--amber); }
+  .run-state.done { background: var(--blue-soft); color: var(--blue); }
+  .run-state.failed { background: var(--heart-soft); color: #fca5a5; }
+  .rt { position: relative; padding-left: 26px; }
+  .rt::before { content: ""; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 1.5px; background: var(--line); }
+  .rt-ev { position: relative; margin-bottom: 14px; }
+  .rt-ev::before { content: ""; position: absolute; left: -23px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--bg); border: 2px solid #3b4d6b; }
+  .rt-ev.ev-tool::before { border-color: var(--blue); }
+  .rt-ev.ev-perm::before { border-color: var(--amber); background: var(--amber-soft); }
+  .rt-ev.ev-file::before { border-color: var(--green); }
+  .rt-ev.ev-err::before { border-color: #f87171; background: var(--heart-soft); }
+  .rt-ev.ev-ckpt::before { border-color: var(--heart); background: var(--heart-soft); }
+  .rt-text { font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
+  .rt-text .cursor { display: inline-block; width: 7px; height: 13px; margin-left: 2px; background: var(--heart); vertical-align: -2px; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .tool-card { border: 1px solid var(--line); border-radius: 10px; background: var(--card); overflow: hidden; }
+  .tool-card summary { display: flex; align-items: center; gap: 9px; padding: 8px 12px; font: 10.5px var(--mono); color: var(--ink-2); cursor: pointer; list-style: none; }
+  .tool-card summary::-webkit-details-marker { display: none; }
+  .tool-card summary:hover { background: var(--card-2); }
+  .tool-card summary .tname { font-weight: 700; color: var(--blue); }
+  .tool-card summary .tin { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-3); }
+  .tool-card summary .tok { flex-shrink: 0; color: var(--green); font-size: 9px; }
+  .tool-card summary .tspin { flex-shrink: 0; width: 10px; height: 10px; border: 2px solid var(--line); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tool-card .tres { border-top: 1px solid var(--line-soft); background: var(--bg-deep); padding: 9px 12px; font: 10px/1.7 var(--mono); color: #9fb0c8; white-space: pre-wrap; max-height: 180px; overflow-y: auto; }
+  .perm-card { border: 1px solid rgba(251,191,36,.45); border-radius: 11px; background: var(--amber-soft); padding: 11px 13px; }
+  .perm-card .pc-t { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 750; color: var(--amber); }
+  .perm-card code { margin: 8px 0; display: block; padding: 7px 10px; white-space: pre-wrap; }
+  .perm-card .pc-a { display: flex; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
+  .pc-btn { border-radius: 7px; padding: 5px 12px; font-size: 10.5px; font-weight: 750; border: 1px solid transparent; }
+  .pc-btn.ok { background: var(--green); color: #04140c; }
+  .pc-btn.ok:hover { filter: brightness(1.12); }
+  .pc-btn.no { border-color: var(--line); color: var(--ink-2); background: var(--card); }
+  .pc-btn.no:hover { border-color: #f87171; color: #fca5a5; }
+  .pc-btn.always { border-color: var(--line); color: var(--ink-3); background: transparent; }
+  .pc-btn.always:hover { color: var(--ink-2); border-color: #35496b; }
+  .perm-card.decided { border-color: var(--line); background: var(--card); }
+  .perm-card.decided .pc-t { color: var(--ink-3); }
+  .perm-note { margin-top: 7px; font-size: 10px; color: var(--ink-3); }
+  .file-ev { display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); font: 10.5px var(--mono); color: var(--ink-2); }
+  .file-ev:hover { border-color: #35496b; color: var(--ink); }
+  .file-ev .plus { color: var(--green); font-weight: 700; } .file-ev .minus { color: #f87171; font-weight: 700; }
+  .ckpt-card { border: 1px solid rgba(239,68,68,.4); border-radius: 11px; background: var(--heart-soft); padding: 11px 13px; font-size: 11.5px; color: #fecaca; }
+  .ckpt-card b { color: #fda4af; }
+  .err-card { border: 1px solid rgba(248,113,113,.4); border-radius: 11px; background: var(--heart-soft); padding: 11px 13px; font: 10.5px var(--mono); color: #fca5a5; }
+  .usage-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 20px; padding: 10px 14px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--bg-deep); font: 10px var(--mono); color: var(--ink-3); }
+  .usage-bar b { color: var(--ink-2); font-weight: 600; }
+  .rt-meta { font: 9.5px var(--mono); color: #55627a; margin-bottom: 5px; }
+
+  /* work log: in-page jump anchors */
+  .jump-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  .jump-row button { padding: 4px 11px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); color: var(--ink-3); font-size: 10px; font-weight: 700; }
+  .jump-row button:hover { color: var(--ink); border-color: #35496b; }
+
+  /* thread: agent turns interleaved with chat messages */
+  .turn { border: 1px solid var(--line); border-radius: 13px; background: var(--bg-deep); margin-bottom: 22px; overflow: hidden; }
+  .turn-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; background: var(--card); cursor: pointer; }
+  .turn-head:hover { background: var(--card-2); }
+  .turn-head .av { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 9.5px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .turn-head strong { display: block; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .turn-head small { display: block; font: 9px var(--mono); color: var(--ink-3); }
+  .turn-head .sp { flex: 1; }
+  .turn-head .chev { color: var(--ink-3); font-size: 11px; transition: transform .15s; flex-shrink: 0; }
+  .turn.open .turn-head .chev { transform: rotate(90deg); }
+  .turn-body { display: none; padding: 16px 16px 12px; border-top: 1px solid var(--line-soft); }
+  .turn.open .turn-body { display: block; }
+  .turn-body .usage-bar { margin-top: 16px; }
+
+  /* usage: stat tiles + per-agent rows + per-turn table */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .stat { border: 1px solid var(--line); border-radius: 11px; background: var(--card); padding: 11px 13px; }
+  .stat .v { font-size: 16px; font-weight: 750; color: var(--ink); letter-spacing: -.01em; }
+  .stat .v .u { font-size: 10px; font-weight: 600; color: var(--ink-3); margin-left: 2px; }
+  .stat .l { margin-top: 2px; font-size: 8.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; color: var(--ink-3); }
+  .ua-row { display: flex; align-items: center; gap: 11px; padding: 10px 4px; border-bottom: 1px solid var(--line-soft); }
+  .ua-row:last-child { border-bottom: none; }
+  .ua-row .av { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .ua-row strong { display: block; font-size: 11.5px; }
+  .ua-row small { font: 9.5px var(--mono); color: var(--ink-3); }
+  .ua-row .num { margin-left: auto; text-align: right; font: 10.5px var(--mono); color: var(--ink-2); }
+  .ua-row .num small { display: block; }
+  .u-table { width: 100%; border-collapse: collapse; font: 10.5px var(--mono); }
+  .u-table th { text-align: left; padding: 7px 10px; color: #55627a; font: 800 8.5px var(--sans); letter-spacing: .11em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+  .u-table td { padding: 8px 10px; border-bottom: 1px solid var(--line-soft); color: var(--ink-2); white-space: nowrap; }
+  .u-table th.r, .u-table td.r { text-align: right; }
+  .u-table tbody tr { cursor: pointer; }
+  .u-table tbody tr:hover td { background: var(--card); }
+  .u-table tbody tr:last-child td { border-bottom: none; }
+  .u-scroll { border: 1px solid var(--line); border-radius: 11px; background: var(--bg-deep); overflow-x: auto; }
+
+  /* composer: agent picker */
+  .agent-pick { display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px 4px 5px; background: var(--bg-deep); font-size: 10.5px; font-weight: 700; color: var(--ink-2); }
+  .agent-pick:hover { border-color: #35496b; color: var(--ink); }
+  .agent-pick i { font-style: normal; width: 17px; height: 17px; border-radius: 6px; display: grid; place-items: center; font-size: 8px; font-weight: 800; color: #fff; }
+  .agent-pick .mdl { font: 9px var(--mono); color: var(--ink-3); font-weight: 400; }
+  .pick-wrap { position: relative; }
+  .pick-menu { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 60; width: 300px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: var(--shadow); overflow: hidden; display: none; }
+  .pick-menu.open { display: block; }
+  .pick-menu .pm-head { padding: 9px 13px 7px; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #55627a; border-bottom: 1px solid var(--line-soft); }
+  .pm-item { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--line-soft); }
+  .pm-item:last-child { border-bottom: none; }
+  .pm-item:hover:not(:disabled) { background: var(--card-2); }
+  .pm-item.sel { background: rgba(239,68,68,.07); box-shadow: inset 2.5px 0 0 var(--heart); }
+  .pm-item:disabled { opacity: .4; cursor: not-allowed; }
+  .pm-item i { font-style: normal; width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; font-size: 9.5px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .pm-item strong { display: block; font-size: 11.5px; }
+  .pm-item small { display: block; font: 9px var(--mono); color: var(--ink-3); }
+  .pm-item .chk { margin-left: auto; color: var(--heart); font-weight: 800; }
+
+  /* command palette + agent registry overlays */
+  .overlay-scrim { display: none; position: fixed; inset: 0; background: rgba(5,10,18,.62); z-index: 70; backdrop-filter: blur(3px); }
+  .overlay-scrim.open { display: block; }
+  .palette { position: fixed; left: 50%; top: 12vh; transform: translateX(-50%); z-index: 71; width: min(560px, 92vw); border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: var(--shadow); overflow: hidden; display: none; }
+  .palette.open { display: block; }
+  .palette .pal-in { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  .palette .pal-in input { flex: 1; border: 0; outline: 0; background: none; color: var(--ink); font-size: 13.5px; }
+  .palette .pal-in input::placeholder { color: #55627a; }
+  .pal-list { max-height: 46vh; overflow-y: auto; padding: 6px; }
+  .pal-group { padding: 8px 10px 3px; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #55627a; }
+  .pal-item { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 12px; color: var(--ink-2); }
+  .pal-item .ic { width: 17px; text-align: center; color: var(--ink-3); font-size: 11px; }
+  .pal-item .hint { margin-left: auto; font: 9px var(--mono); color: #55627a; }
+  .pal-item.hi { background: rgba(239,68,68,.1); color: var(--ink); }
+  .pal-item.hi .ic { color: #fca5a5; }
+  .pal-empty { padding: 18px; text-align: center; color: var(--ink-3); font-size: 11.5px; font-style: italic; }
+  .registry { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 71; width: min(680px, 94vw); max-height: 84vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); box-shadow: var(--shadow); display: none; }
+  .registry.open { display: block; }
+  .registry .rg-head { display: flex; align-items: center; gap: 10px; padding: 15px 18px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 1; }
+  .registry .rg-head h3 { font-size: 14px; font-weight: 800; }
+  .registry .rg-head small { color: var(--ink-3); font-size: 10.5px; }
+  .registry .rg-head .x { margin-left: auto; }
+  .rg-row { display: flex; align-items: flex-start; gap: 13px; padding: 14px 18px; border-bottom: 1px solid var(--line-soft); }
+  .rg-row:last-child { border-bottom: none; }
+  .rg-row .av { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-size: 12.5px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .rg-row strong { font-size: 12.5px; }
+  .rg-row .vend { font: 9.5px var(--mono); color: var(--ink-3); margin-left: 7px; }
+  .rg-row .pkg { display: block; font: 9.5px var(--mono); color: var(--ink-3); margin-top: 2px; }
+  .rg-caps { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .cap { padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); background: var(--bg-deep); font-size: 9px; font-weight: 700; color: var(--ink-3); }
+  .cap.y { border-color: rgba(52,211,153,.35); color: var(--green); background: var(--green-soft); }
+  .rg-st { margin-left: auto; flex-shrink: 0; text-align: right; }
+  .rg-st .run-state { font-size: 9.5px; }
+  .rg-st small { display: block; margin-top: 5px; font: 9px var(--mono); color: #55627a; }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; z-index: 90; transform: translate(-50%, 14px); padding: 10px 15px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); color: var(--ink); box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: .2s; font-size: 11.5px; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .scrim { display: none; position: fixed; inset: 54px 0 0; background: rgba(5,10,18,.55); z-index: 39; }
+  .scrim.open { display: block; }
+
+  @media (max-width: 1100px) {
+    .shell { grid-template-columns: 188px minmax(0,1fr); }
+    .tasks-pane { position: fixed; top: 54px; left: 0; bottom: 0; width: min(320px, 90vw); z-index: 40; transform: translateX(-105%); transition: transform .2s; box-shadow: var(--shadow); }
+    .tasks-pane.open { transform: none; }
+    .mobile-only { display: block; }
+  }
+  @media (max-width: 720px) {
+    .shell { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); }
+    .section-menu { flex-direction: row; overflow-x: auto; padding: 6px 8px; border-right: none; border-bottom: 1px solid var(--line); align-items: center; }
+    .task-mini, .menu-label { display: none; }
+    .sec-btn { width: auto; flex: none; padding: 7px 11px; border-bottom: none; }
+    .sec-btn .desc { display: none; }
+    .sec-btn.active { box-shadow: inset 0 -2px 0 var(--heart); background: transparent; }
+    .git-line, .serve-chip, .top-div, .agents-cluster, .approvals-btn span.lbl { display: none; }
+    .approvals-btn { padding: 5px 8px; }
+    #secMenu { display: flex; flex-direction: row; align-items: center; }
+    .jump-row { overflow-x: auto; flex-wrap: nowrap; }
+    .ua-row { flex-wrap: wrap; }
+    .ua-row .num { flex-basis: 100%; margin-left: 39px; text-align: left; }
+    .ua-row .num small { display: inline; margin-left: 7px; }
+    .gh { grid-template-columns: 1fr; }
+    .gh-files { max-height: 180px; border-right: none; border-bottom: 1px solid var(--line); }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= TOP BAR ================= -->
+  <header class="top">
+    <button class="icon-btn mobile-only" id="openTasks" aria-label="Open task list">☰</button>
+    <a class="logo" href="#">AI<span class="heart">♥</span>Code <span class="thin">Workflow</span></a>
+    <span class="top-div"></span>
+    <button class="git-line" onclick="notify('Demo: git status — 2 modified · 3 untracked, on branch main')">
+      <span>⎇</span> main<span class="dirty"></span><span>5 changes</span>
+    </button>
+    <span class="serve-chip"><i></i>localhost:4111</span>
+    <div class="top-actions">
+      <button class="approvals-btn" id="approvalsBtn" style="display:none" aria-label="Pending permission requests">
+        ⚠ <span class="lbl">Approvals</span> <span class="bdg" id="approvalsBdg">0</span>
+      </button>
+      <div class="agents-cluster" id="agentsCluster" role="group" aria-label="Agent status"></div>
+      <button class="icon-btn" style="width:auto;padding:0 10px;font-size:11px" onclick="openPalette()" aria-label="Command palette">⌘ <span class="kbd" style="border:none;background:none;padding:0">Ctrl K</span></button>
+      <button class="icon-btn" onclick="openRegistry()" aria-label="Agent settings">⚙</button>
+      <span class="avatar">AL</span>
+    </div>
+  </header>
+
+  <div class="shell">
+
+    <!-- ================= PANE 1: TASKS ================= -->
+    <section class="tasks-pane" id="tasksPane">
+      <div class="tasks-head">
+        <div class="row"><h2>Tasks</h2><span class="count" id="listCount"></span></div>
+        <button class="new-mini" onclick="notify('Demo: creates task.md + empty plan + supporting-materials/')">＋ New task</button>
+        <div class="search"><span class="ic">⌕</span><input id="q" type="search" placeholder="Filter tasks…" oninput="renderList()"></div>
+      </div>
+      <div class="list-scroll" id="list"></div>
+    </section>
+
+    <!-- ================= PANE 2: SECTION MENU ================= -->
+    <nav class="section-menu" aria-label="Task sections">
+      <div class="task-mini">
+        <div class="lbl">Selected task</div>
+        <div class="nm"><span class="ph-dot" id="miniDot"></span><span id="miniName"></span></div>
+      </div>
+      <div id="secMenu"></div>
+      <div class="menu-label">Reference</div>
+      <button class="sec-btn" onclick="notify('Demo: opens rendered guidelines.md')"><span class="r"><span class="ic">§</span> Guidelines</span><span class="desc">workflow/guidelines.md</span></button>
+    </nav>
+
+    <!-- ================= PANE 3: PAGE ================= -->
+    <main class="work">
+      <div class="work-head">
+        <div class="crumb" id="crumb"></div>
+        <div class="work-title-row">
+          <h1 id="wTitle"></h1>
+          <span class="state-pill" id="wState"></span>
+          <span class="spacer"></span>
+          <button class="btn" id="editBtn" onclick="notify('Demo: opens section-based task.md editing')">Edit task.md</button>
+        </div>
+      </div>
+
+      <div class="work-body" id="workBody"><div class="work-inner" id="workInner"></div></div>
+
+      <div class="composer-wrap" id="composerWrap" style="display:none">
+        <form class="composer" id="composer">
+          <textarea id="promptBox" aria-label="Message the agent" placeholder="Message the agent about this task…"></textarea>
+          <div class="composer-bar">
+            <div class="pick-wrap">
+              <button type="button" class="agent-pick" id="agentPickBtn" aria-haspopup="listbox" aria-expanded="false" onclick="togglePickMenu(event)"></button>
+              <div class="pick-menu" id="pickMenu" role="listbox" aria-label="Choose agent"></div>
+            </div>
+            <button type="button" class="composer-opt" id="modeBtn" onclick="cycleMode()" aria-label="Composer mode">Mode: Discuss ▾</button>
+            <button type="button" class="composer-opt" onclick="notify('Demo: attach a file from supporting-materials/')">＋ Attach</button>
+            <button class="send" aria-label="Send message">↑</button>
+          </div>
+        </form>
+        <div class="composer-hint">Scoped to this task, saved as <b>chat.md</b> in its folder — <b>task.md</b> stays human-owned. Replies stream from the selected agent SDK.</div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+
+<!-- ================= COMMAND PALETTE ================= -->
+<div class="overlay-scrim" id="overlayScrim" onclick="closeOverlays()"></div>
+<div class="palette" id="palette" role="dialog" aria-label="Command palette">
+  <div class="pal-in"><span style="color:#55627a">⌕</span>
+    <input id="palInput" type="text" placeholder="Jump to task, section, run, or action…" oninput="renderPalette()" autocomplete="off">
+    <span class="kbd">esc</span></div>
+  <div class="pal-list" id="palList"></div>
+</div>
+
+<!-- ================= AGENT REGISTRY ================= -->
+<div class="registry" id="registry" role="dialog" aria-label="Agent registry">
+  <div class="rg-head">
+    <h3>Agents</h3><small>SDK adapters normalized to one run/event schema</small>
+    <button class="icon-btn x" onclick="closeOverlays()" aria-label="Close agent registry">✕</button>
+  </div>
+  <div id="rgBody"></div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ============================================================
+   REAL DATA — read from workflow-dev/workflow/tasks/ (2026-07-13).
+   task.md sections verbatim (abridged where noted); plan milestones
+   and checkbox states mirror implementation-plan.md; commits from git log.
+   ============================================================ */
+const TASKS = [
+  {
+    id: "20260712T2341_webui-design-claude", name: "WebUI Design Claude",
+    created: "Jul 12, 2026 · 23:41", status: "active", phase: "implementation", note: "design round 3",
+    preview: "Create 3 UI proposals as separate HTML demos for the WebUI redesign.",
+    context: `<p>Currently created webui for ailovecode-workflow, but need to have better ui</p>`,
+    request: `<p>Create 3 ui that you think is best for this project.</p><ul><li>Create as 3 separate html to demo the design for the webui.</li><li>Create as html with best ui/ux.</li><li>Create under <code>webui-design\\claude</code> folder.</li></ul>`,
+    reference: null,
+    summary: "Produce distinct UI design proposals for the AILoveCode Workflow WebUI as standalone HTML demos under webui-design/claude, grounded in the real screens of src/web/views.ts.",
+    milestones: [
+      { name: "Milestone 1 — Design demos", items: [["design-1-command-deck.html", true], ["design-2-studio.html", true], ["design-3-flow.html", true]] },
+      { name: "Milestone 2 — Claude-style design", items: [["design-4-claude-style.html in Anthropic's design language", true]] },
+      { name: "Milestone 3 — Brand + real data", items: [["Adopt the codex-04 agent-workspace direction", true], ["Theme with the ailovecode.com brand", true], ["Embed actual workflow task data", true]] },
+      { name: "Milestone 4 — Iterations on design 6/7", items: [["Per-task chat with Work log | Chat switch", true], ["Top bar simplification + noise reduction", true], ["Tasks → sections → page IA (this page)", false]] }
+    ],
+    implementedIn: ["design-5-agent-workspace.html", "design-6-agent-workspace.html", "design-7-unified-workspace.html"],
+    changes: [
+      ["webui-design/claude/design-1-command-deck.html", "A", 707, 0], ["webui-design/claude/design-2-studio.html", "A", 642, 0],
+      ["webui-design/claude/design-3-flow.html", "A", 731, 0], ["webui-design/claude/design-4-claude-style.html", "A", 764, 0],
+      ["webui-design/claude/design-5-agent-workspace.html", "A", 1094, 0], ["webui-design/claude/design-5a-mission-control.html", "A", 638, 0],
+      ["webui-design/claude/design-5b-task-cockpit.html", "A", 857, 0], ["webui-design/claude/design-5c-flow-command.html", "A", 596, 0],
+      ["webui-design/claude/design-6-agent-workspace.html", "A", 1213, 0], ["webui-design/claude/design-7-unified-workspace.html", "A", 1078, 0]
+    ],
+    commits: [],
+    chat: [
+      { who: "agent", t: "Jul 12 · 23:44", html: "<p>Task understood: 3 standalone HTML design demos under <code>webui-design/claude</code>. I'm in discussion mode — say the word when you want a plan.</p>" },
+      { who: "you", t: "Jul 12 · 23:52", html: "<p>create plan and implement it</p>" },
+      { who: "agent", t: "Jul 13 · 00:05", html: "<p>Plan written, 3 demos implemented. <b>Checkpoint:</b> open them in a browser and validate the directions.</p>" },
+      { who: "you", t: "Jul 13", html: "<p>not satisfy, if it's create for claude webui, how you will design it</p>" },
+      { who: "agent", t: "Jul 13", html: "<p>Built <code>design-4-claude-style.html</code> in Anthropic's design language — warm ivory, serif display, terracotta accent.</p>" },
+      { who: "you", t: "Jul 13", html: "<p>codex 04 direction, but with actual data and the ailovecode.com brand</p>" },
+      { who: "agent", t: "Jul 13", html: "<p><code>design-5-agent-workspace.html</code>: codex-04 direction, brand (#111827 · ♥ #ef4444), real data from all 6 task folders.</p>" },
+      { who: "you", t: "Jul 13", html: "<p>you miss understanding, i want: 1st menu tasks, 2nd menu work log / chat / task.md and others, page follows the selection</p>" },
+      { who: "agent", t: "Jul 13", html: "<p>Fixed — tasks in the first menu, this section menu in the second, and the page renders from whatever you select here.</p>" }
+    ],
+    materials: []
+  },
+  {
+    id: "20260712T2335_webui-design-codex", name: "WebUI Design Codex",
+    created: "Jul 12, 2026 · 23:35", status: "active", phase: "implementation", note: "milestone 5 of 5",
+    preview: "Parallel design exploration task for comparison.",
+    context: `<p>Currently created webui for ailovecode-workflow, but need to have better ui</p>`,
+    request: `<p>Create 3 ui that you think is best for this project. Create as 3 separate html to demo the design for the webui, under <code>webui-design\\codex</code>.</p>`,
+    reference: null,
+    summary: "Create standalone, responsive HTML prototypes that rethink the AILoveCode Workflow WebUI while preserving its file-based task model and ownership rules.",
+    milestones: [
+      { name: "Milestone 1 — Product Mapping", items: [["Review existing views", true], ["Identify ownership states", true], ["Define three directions", true]] },
+      { name: "Milestone 2 — Standalone Concepts", items: [["Command Center", true], ["Editorial Workspace", true], ["Flow Board", true], ["Responsive nav + interactions", true]] },
+      { name: "Milestone 3 — Validation", items: [["HTML structure + local links", true], ["Narrow and wide viewports", true], ["Focus states + reduced motion", true], ["No implementation files modified", true]] },
+      { name: "Milestone 4 — Codex-Native Workspace", items: [["Three-pane thread/conversation/inspector layout", true], ["Planning, edits, commands, approvals in timeline", true], ["Inspector tabs + responsive panes", true], ["Desktop and narrow renders validated", true]] },
+      { name: "Milestone 5 — Brand and Real Data Refinement", items: [["AILoveCode brand atmosphere", false], ["Actual repository task data", false], ["Hierarchy + readability pass", false], ["Revalidate renders", false]] }
+    ],
+    implementedIn: ["01-command-center.html", "02-editorial-workspace.html", "03-flow-board.html", "04-codex-agent-workspace.html"],
+    changes: [
+      ["webui-design/codex/01-command-center.html", "A", 618, 0], ["webui-design/codex/02-editorial-workspace.html", "A", 577, 0],
+      ["webui-design/codex/03-flow-board.html", "A", 645, 0], ["webui-design/codex/04-codex-agent-workspace.html", "A", 654, 0]
+    ],
+    commits: [],
+    chat: [
+      { who: "agent", t: "Jul 12 · 23:38", html: "<p>Three directions proposed: Command Center, Editorial Workspace, Flow Board. Ready to build on your go.</p>" },
+      { who: "you", t: "Jul 12 · 23:40", html: "<p>proceed</p>" },
+      { who: "agent", t: "Jul 13", html: "<p>01–03 built and validated. Added <code>04-codex-agent-workspace.html</code> as the recommended concept.</p>" },
+      { who: "agent", t: "Jul 13", html: "<p>Milestone 5 (brand + real data) is defined but unchecked — per the planning boundary, I'll wait for your explicit request.</p>" }
+    ],
+    materials: []
+  },
+  {
+    id: "20260623T0645_webui-supporting-materials-management", name: "WebUI Supporting Materials Management",
+    created: "Jun 23, 2026 · 06:45", status: "done", phase: "done",
+    preview: "Upload, preview, and remove files in each task's supporting-materials folder.",
+    context: `<p>Supporting materials can only be viewed when files already exist in the folder. There is no way to manage them from the WebUI — users still need the filesystem for screenshots, diagrams, and notes.</p>`,
+    request: `<p>Review how supporting materials should be managed from the embedded WebUI:</p><ul><li>uploading, viewing, downloading, removing</li><li>handling multiple files</li></ul><p>Files stay inside <code>supporting-materials/</code> — no cloud storage, no database.</p>`,
+    reference: `<pre>workflow/tasks/
+└── YYYYMMDDTHHMM_task-name/
+    ├── task.md
+    ├── implementation-plan.md
+    └── supporting-materials/</pre>`,
+    summary: "Add Phase 1 supporting materials management to the embedded WebUI — upload and remove files directly from a task detail page while preserving the file-based workflow.",
+    milestones: [
+      { name: "Milestone 1 — Upload dependency", items: [["Add multer + types", true], ["Configure simple storage strategy", true]] },
+      { name: "Milestone 2 — Safe file operations", items: [["Sanitize filenames", true], ["Unique names — no silent overwrites", true], ["Path traversal prevented", true], ["Delete files only, never directories", true]] },
+      { name: "Milestone 3 — Upload/delete routes", items: [["POST /tasks/:taskId/materials", true], ["POST /tasks/:taskId/materials/delete", true], ["Redirects back to detail", true]] },
+      { name: "Milestone 4 — Materials UI", items: [["Upload form in the card", true], ["Open/Download/Remove per file", true]] },
+      { name: "Milestone 5 — Create-task uploads", items: [["File input before Reference", true], ["Generated paths shown for copying", true]] },
+      { name: "Milestone 6 — Build and verify", items: [["npm run build passed", true], ["Traversal rejection tested (../task.md)", true]] }
+    ],
+    implementedIn: ["src/web/server.ts", "src/web/views.ts", "src/workflow/tasks.ts", "package.json"],
+    changes: [["src/web/server.ts", "M", 48, 3], ["src/web/views.ts", "M", 96, 12], ["src/workflow/tasks.ts", "M", 72, 1], ["package.json", "M", 2, 1], ["package-lock.json", "M", 210, 2]],
+    commits: [{ h: "9455562", d: "Jun 23, 2026", m: 'create plan "WebUI Supporting Materials Management"' }],
+    chat: [
+      { who: "you", t: "Jun 23 · 06:50", html: "<p>can we upload multiple files at once?</p>" },
+      { who: "agent", t: "Jun 23 · 06:52", html: "<p>Yes — multer, field name <code>materials</code>. Duplicate names get unique suffixes so nothing is silently overwritten.</p>" },
+      { who: "you", t: "Jun 23 · 07:04", html: "<p>make sure delete can't escape the folder</p>" },
+      { who: "agent", t: "Jun 23 · 07:15", html: "<p>Confirmed — traversal like <code>../task.md</code> is rejected; deletes are file-only and scoped. Tested in a temporary workflow.</p>" }
+    ],
+    materials: [{ name: "image.png", size: "41.5 KB", ext: "PNG" }]
+  },
+  {
+    id: "20260623T0606_webui-task-creation", name: "WebUI Task Creation",
+    created: "Jun 23, 2026 · 06:06", status: "done", phase: "done",
+    preview: "Create tasks from the browser with the standard task.md template sections.",
+    context: `<p>Creating a task still requires the CLI: <code>npx ailovecode-workflow create-task "task-name"</code>. This creates a disconnect between the WebUI and the CLI.</p>`,
+    request: `<p>Integrate task creation into the WebUI: creation workflow, required inputs, naming, folder generation, validation, and navigation after creation.</p>`,
+    reference: `<p>Principles: lightweight, file-based, local-first; task.md is human-owned, implementation-plan.md is AI-owned.</p>`,
+    summary: "Let users create workflow tasks from the WebUI with the standard folder conventions, by extracting shared task-creation logic used by both the CLI and the new form.",
+    milestones: [
+      { name: "Milestone 1 — Shared creation logic", items: [["createWorkflowTask() + kebab-case + timestamps", true], ["Empty plan file, supporting-materials/ created", true]] },
+      { name: "Milestone 2 — CLI uses shared logic", items: [["Refactor create-task.ts", true], ["Preserve output + errors", true]] },
+      { name: "Milestone 3 — New Task form", items: [["renderTaskNew() with all sections", true], ["Validation errors; entry points on List + Dashboard", true]] },
+      { name: "Milestone 4 — Create routes", items: [["GET/POST /tasks/new", true], ["Re-render with values on validation failure", true]] },
+      { name: "Milestone 5 — Build and verify", items: [["Build passed; CLI + WebUI creation tested", true]] }
+    ],
+    implementedIn: ["src/workflow/tasks.ts", "src/commands/create-task.ts", "src/web/server.ts", "src/web/views.ts"],
+    changes: [["src/workflow/tasks.ts", "M", 58, 4], ["src/commands/create-task.ts", "M", 18, 22], ["src/web/server.ts", "M", 40, 2], ["src/web/views.ts", "M", 74, 3]],
+    commits: [
+      { h: "bd7eb3b", d: "Jun 23, 2026", m: 'done plan "WebUI Task Creation"' },
+      { h: "3695828", d: "Jun 23, 2026", m: 'create plan "WebUI Task Creation"' }
+    ],
+    chat: [
+      { who: "agent", t: "Jun 23 · 06:10", html: "<p>Recommendation: extract a shared <code>createWorkflowTask()</code> so the CLI and the WebUI form produce identical folders.</p>" },
+      { who: "you", t: "Jun 23 · 06:12", html: "<p>ok, but keep the CLI behavior exactly the same</p>" },
+      { who: "agent", t: "Jun 23 · 06:40", html: "<p>Done — CLI output preserved; the form redirects to the new task. Both paths tested.</p>" }
+    ],
+    materials: []
+  },
+  {
+    id: "20260623T0402_embedded-webui-task-list-improvements", name: "Embedded WebUI Task List Improvements",
+    created: "Jun 23, 2026 · 04:02", status: "done", phase: "done",
+    preview: "Search, previews, and file-status badges on the task list.",
+    context: `<p>The initial embedded WebUI is functional, but after creating multiple tasks the Task List feels basic and may become harder to use as task count grows.</p>`,
+    request: `<p>Improve task discovery, navigation, information visibility, scalability, and workflow efficiency — while staying file-based, local-first, lightweight.</p>`,
+    reference: `<p>A better read-only index over workflow/tasks/ — not a project management platform.</p>`,
+    summary: "Make the Task List easy to scan, search, and navigate as task count grows — a better read-only index over workflow/tasks/.",
+    milestones: [
+      { name: "Milestone 1 — Derived summary fields", items: [["Preview from ## Request → ## Context", true], ["Plan/material detection", true]] },
+      { name: "Milestone 2 — Richer rows", items: [["Name primary, folder secondary, timestamp right", true], ["Badges + preview", true]] },
+      { name: "Milestone 3 — Search/filter UX", items: [["Filter by name/ID/timestamp/preview", true], ["Counts + no-results state", true]] },
+      { name: "Milestone 4 — Polish + build", items: [["Empty states; npm run build", true]] }
+    ],
+    implementedIn: ["src/workflow/tasks.ts", "src/web/views.ts"],
+    changes: [["src/workflow/tasks.ts", "M", 36, 2], ["src/web/views.ts", "M", 88, 15]],
+    commits: [{ h: "ee29d09", d: "Jun 23, 2026", m: 'done "Embedded WebUI Task List Improvements"' }],
+    chat: [
+      { who: "you", t: "Jun 23 · 04:05", html: "<p>the list feels basic — but don't turn this into a project management tool</p>" },
+      { who: "agent", t: "Jun 23 · 04:10", html: "<p>Agreed. Derived fields only — preview, badges, client-side search. No statuses, tags, priorities, or persisted state.</p>" }
+    ],
+    materials: []
+  },
+  {
+    id: "20260622T1522_embedded-webui-file-mode", name: "Embedded WebUI File Mode",
+    created: "Jun 22, 2026 · 15:22", status: "done", phase: "done",
+    preview: "Serve the workflow folder as a local WebUI while preserving file-based rules.",
+    context: `<p>AILoveCode Workflow provides a CLI experience today. An embedded local WebUI improves usability while staying lightweight, local-first, file-based — no database, auth, AI integration, or cloud.</p>`,
+    request: `<p>Implement <code>npx ailovecode-workflow serve</code> — TypeScript, Express, Tailwind, server-rendered pages, no React. Dashboard, task list, detail, task.md editing, read-only plan, materials, guidelines.</p>`,
+    reference: `<pre>workflow/
+├── guidelines.md
+└── tasks/YYYYMMDDTHHMM_task-name/</pre>`,
+    summary: "Phase 1 embedded local WebUI launched with npx ailovecode-workflow serve — Express on http://localhost:4111, server-rendered TypeScript pages, operating directly on the file-based workflow/ structure.",
+    milestones: [
+      { name: "Milestone 1 — TypeScript CLI foundation", items: [["Build setup; CLI ported to TS", true]] },
+      { name: "Milestone 2 — File-based services", items: [["Path detection, listing, validation", true], ["Section parser + writer", true], ["Safe material path resolution", true]] },
+      { name: "Milestone 3 — Express server + routes", items: [["All core routes", true], ["Clear error when workflow/ missing", true]] },
+      { name: "Milestone 4 — Views + Tailwind", items: [["Layout helper; all pages styled", true], ["No React", true]] },
+      { name: "Milestone 5 — Validation + packaging", items: [["Routes validated with curl", true], ["README + npm pack verified", true]] }
+    ],
+    implementedIn: ["src/cli.ts", "src/commands/serve.ts", "src/web/server.ts", "src/web/views.ts", "src/workflow/tasks.ts"],
+    changes: [["src/cli.ts", "A", 62, 0], ["src/commands/serve.ts", "A", 38, 0], ["src/web/server.ts", "A", 176, 0], ["src/web/views.ts", "A", 512, 0], ["src/workflow/tasks.ts", "A", 214, 0], ["tsconfig.json", "A", 24, 0], ["tailwind.config.js", "A", 12, 0]],
+    commits: [
+      { h: "077d80a", d: "Jun 23, 2026", m: 'done plan "Embedded WebUI File Mode"' },
+      { h: "913784a", d: "Jun 22, 2026", m: 'create plan "Embedded WebUI File Mode"' }
+    ],
+    chat: [
+      { who: "you", t: "Jun 22 · 15:30", html: "<p>no react please, keep it light</p>" },
+      { who: "agent", t: "Jun 22 · 15:33", html: "<p>Understood — server-rendered Express + Tailwind, Markdown via markdown-it with raw HTML disabled, bound to <code>localhost:4111</code>.</p>" },
+      { who: "agent", t: "Jun 23 · 02:20", html: "<p>Smoke test passed: init → create-task → serve in a temp folder; all routes validated with curl.</p>" }
+    ],
+    materials: []
+  }
+];
+
+const COMMITS_HEAD = { h: "9455562", m: 'create plan "WebUI Supporting Materials Management"' };
+
+/* ============================================================
+   AGENT ADAPTER MODEL — every backend (SDK or CLI) is normalized
+   to one Agent / Run / RunEvent schema the UI renders uniformly.
+   Wiring a real SDK later = writing one adapter, not a redesign.
+   ============================================================ */
+const AGENTS = [
+  { id: "claude", short: "CL", name: "Claude Agent SDK", vendor: "Anthropic", kind: "sdk", color: "#d97757",
+    pkg: "@anthropic-ai/claude-agent-sdk", models: ["claude-fable-5", "claude-opus-4-8", "claude-sonnet-5"],
+    caps: { streaming: 1, tools: 1, permissions: 1, sessions: 1, hooks: 1, subagents: 1 }, status: "running" },
+  { id: "codex", short: "CX", name: "Codex SDK", vendor: "OpenAI", kind: "sdk", color: "#10a37f",
+    pkg: "@openai/codex-sdk", models: ["gpt-5.2-codex", "gpt-5.1-codex-mini"], billing: "plan",
+    caps: { streaming: 1, tools: 1, permissions: 1, sessions: 1, hooks: 0, subagents: 0 }, status: "awaiting" },
+  { id: "pi", short: "π", name: "Pi Coding Agent", vendor: "Pi", kind: "sdk", color: "#a78bfa",
+    pkg: "@mariozechner/pi-agent", models: ["pi-default", "bring-your-own-model"],
+    caps: { streaming: 1, tools: 1, permissions: 0, sessions: 1, hooks: 0, subagents: 0 }, status: "idle" },
+  { id: "gemini", short: "GM", name: "Gemini CLI", vendor: "Google", kind: "cli", color: "#4e8cf7",
+    pkg: "@google/gemini-cli", models: ["gemini-2.5-pro", "gemini-2.5-flash"],
+    caps: { streaming: 1, tools: 1, permissions: 1, sessions: 0, hooks: 0, subagents: 0 }, status: "idle" },
+  { id: "opencode", short: "OC", name: "OpenCode", vendor: "open source", kind: "cli", color: "#fbbf24",
+    pkg: "opencode-ai", models: ["provider-agnostic"],
+    caps: { streaming: 1, tools: 1, permissions: 1, sessions: 1, hooks: 0, subagents: 0 }, status: "offline" }
+];
+const agentById = id => AGENTS.find(a => a.id === id);
+const CAP_LABELS = { streaming: "streaming", tools: "tool use", permissions: "approvals", sessions: "resume", hooks: "hooks", subagents: "subagents" };
+
+/* RunEvent kinds: text · tool(name,input,result,running?) · perm(desc,cmd,state) ·
+   file(path,+,−) · ckpt(html) · err(msg). One schema for every agent backend. */
+const RUNS = [
+  { id: "r-014", task: "20260712T2341_webui-design-claude", agent: "claude", model: "claude-fable-5", mode: "Implement",
+    state: "streaming", started: "Jul 14 · 23:12", dur: "4m 32s", usage: { tin: "48.2k", tout: "12.6k", cache: "38.4k", cost: "$0.84" },
+    events: [
+      { k: "text", t: "23:12", txt: "Reading the task folder and design-7 baseline before touching anything." },
+      { k: "tool", t: "23:12", name: "Read", input: "webui-enhancement/design-7-unified-workspace.html", result: "994 lines — 3-pane workspace, mock data grounded in real tasks", done: 1 },
+      { k: "tool", t: "23:13", name: "Grep", input: "pattern: \"composer|section-menu\" · 2 files", result: "12 matches — composer scoped per task, sections rendered from SECTIONS[]", done: 1 },
+      { k: "text", t: "23:14", txt: "Baseline understood. Copying it forward as design-8 and layering the agent hub: registry, run timeline, approvals." },
+      { k: "file", t: "23:15", path: "webui-enhancement/claude/design-8-agent-hub.html", add: 512, del: 9 },
+      { k: "text", t: "23:16", txt: "Now wiring the run timeline renderer — tool calls collapse, permission requests block the stream until you decide" }
+    ] },
+  { id: "r-013", task: "20260712T2341_webui-design-claude", agent: "pi", model: "pi-default", mode: "Discuss",
+    state: "done", started: "Jul 14 · 21:40", dur: "1m 08s", usage: { tin: "9.1k", tout: "2.2k", cache: "6.2k", cost: "$0.06" },
+    events: [
+      { k: "text", t: "21:40", txt: "Second opinion requested on the design-7 information architecture." },
+      { k: "tool", t: "21:40", name: "Read", input: "webui-enhancement/design-7-unified-workspace.html", result: "reviewed panes + section menu", done: 1 },
+      { k: "text", t: "21:41", txt: "The tasks → sections → page hierarchy is sound. Two gaps: no visibility into which agent is working, and no run history. Recommend making runs first-class." }
+    ] },
+  { id: "r-012", task: "20260712T2335_webui-design-codex", agent: "codex", model: "gpt-5.2-codex", mode: "Implement",
+    state: "awaiting", started: "Jul 14 · 23:05", dur: "9m 51s", usage: { tin: "61.7k", tout: "18.3k", cache: "22.1k", cost: "plan" },
+    events: [
+      { k: "text", t: "23:05", txt: "Resuming milestone 5 — brand atmosphere and real repository data." },
+      { k: "tool", t: "23:06", name: "Read", input: "webui-design/codex/04-codex-agent-workspace.html", result: "654 lines", done: 1 },
+      { k: "file", t: "23:09", path: "webui-design/codex/04-codex-agent-workspace.html", add: 148, del: 61 },
+      { k: "perm", t: "23:14", desc: "Codex wants to run a shell command in the workspace", cmd: "npm run build && node scripts/render-check.js --viewport 390,1280", state: "pending" }
+    ] },
+  { id: "r-011", task: "20260623T0645_webui-supporting-materials-management", agent: "claude", model: "claude-sonnet-5", mode: "Implement",
+    state: "done", started: "Jun 23 · 07:02", dur: "12m 44s", usage: { tin: "104k", tout: "31k", cache: "61k", cost: "$1.67" }, pos: 2,
+    events: [
+      { k: "text", t: "07:02", txt: "Implementing safe file operations for supporting materials." },
+      { k: "tool", t: "07:03", name: "Edit", input: "src/workflow/tasks.ts — sanitize + unique names", result: "applied", done: 1 },
+      { k: "perm", t: "07:08", desc: "Agent wants to run the traversal-rejection test", cmd: "npm test -- --grep \"path traversal\"", state: "approved" },
+      { k: "tool", t: "07:09", name: "Bash", input: "npm test -- --grep \"path traversal\"", result: "PASS — ../task.md rejected, deletes scoped to supporting-materials/", done: 1 },
+      { k: "file", t: "07:11", path: "src/workflow/tasks.ts", add: 72, del: 1 },
+      { k: "ckpt", t: "07:14", html: "<b>Development Checkpoint:</b> uploads + safe delete are runnable — validate in the WebUI before I continue to create-task uploads." }
+    ] },
+  { id: "r-010", task: "20260623T0606_webui-task-creation", agent: "gemini", model: "gemini-2.5-pro", mode: "Plan",
+    state: "failed", started: "Jun 23 · 06:20", dur: "0m 41s", usage: { tin: "3.4k", tout: "0.2k", cache: "0", cost: "$0.01" }, pos: 2,
+    events: [
+      { k: "text", t: "06:20", txt: "Drafting form-validation notes for the task creation flow…" },
+      { k: "err", t: "06:21", msg: "429 RESOURCE_EXHAUSTED — provider quota exceeded. Run stopped; no files were touched. Retry or hand the prompt to another agent." }
+    ] }
+];
+const runsFor = tid => RUNS.filter(r => r.task === tid);
+const liveRun = t => runsFor(t.id).find(r => r.state === "streaming" || r.state === "awaiting");
+const pendingPerms = () => RUNS.flatMap(r => r.events.filter(e => e.k === "perm" && e.state === "pending").map(e => ({ run: r, ev: e })));
+
+const SECTIONS = [
+  ["log", "▤", "Work log"],
+  ["thread", "✎", "Thread"],
+  ["changes", "±", "Changes"],
+  ["activity", "⎇", "Activity"],
+  ["usage", "▦", "Usage"]
+];
+
+/* ---- usage aggregation (sums the per-run records) ---- */
+const parseTok = s => { const n = parseFloat(s) || 0; return /k/i.test(s) ? n * 1000 : n; };
+const fmtTok = n => n >= 1000 ? ((n / 1000).toFixed(n >= 99500 ? 0 : 1).replace(/\.0$/, "")) + "k" : String(Math.round(n));
+const parseDur = s => { const m = (s || "").match(/(\d+)m\s*(\d+)s/); return m ? +m[1] * 60 + +m[2] : 0; };
+const fmtDur = sec => Math.floor(sec / 60) + "m " + String(sec % 60).padStart(2, "0") + "s";
+function usageStats(runs) {
+  const st = { tin: 0, tout: 0, cache: 0, cost: 0, planTurns: 0, secs: 0, turns: runs.length };
+  runs.forEach(r => {
+    st.tin += parseTok(r.usage.tin); st.tout += parseTok(r.usage.tout); st.cache += parseTok(r.usage.cache || "0");
+    if ((r.usage.cost || "").startsWith("$")) st.cost += parseFloat(r.usage.cost.slice(1)); else st.planTurns++;
+    st.secs += parseDur(r.dur);
+  });
+  st.costLabel = st.cost === 0 && st.planTurns ? "plan" : "≈ $" + st.cost.toFixed(2);
+  return st;
+}
+const SECTION_LABEL = Object.fromEntries(SECTIONS.map(([k, , l]) => [k, l]));
+
+/* ---- diff excerpts (grounded in the real files; shown as excerpts) ---- */
+const HTML_TITLES = {
+  "design-1-command-deck.html": "Design 1 · Command Deck — AILoveCode Workflow",
+  "design-2-studio.html": "Design 2 · Studio — AILoveCode Workflow",
+  "design-3-flow.html": "Design 3 · Flow — AILoveCode Workflow",
+  "design-4-claude-style.html": "Design 4 · Claude Style — AILoveCode Workflow",
+  "design-5-agent-workspace.html": "Design 5 · Agent Workspace — AILoveCode Workflow",
+  "design-5a-mission-control.html": "Design 5A · Mission Control — AILoveCode Workflow",
+  "design-5b-task-cockpit.html": "Design 5B · Task Cockpit — AILoveCode Workflow",
+  "design-5c-flow-command.html": "Design 5C · Flow Command — AILoveCode Workflow",
+  "design-6-agent-workspace.html": "Design 6 · Agent Workspace — AILoveCode Workflow",
+  "design-7-unified-workspace.html": "Design 7 · Unified Workspace — AILoveCode Workflow",
+  "01-command-center.html": "Command Center — AILoveCode Workflow",
+  "02-editorial-workspace.html": "Editorial Workspace — AILoveCode Workflow",
+  "03-flow-board.html": "Flow Board — AILoveCode Workflow",
+  "04-codex-agent-workspace.html": "Codex Agent Workspace — AILoveCode Workflow"
+};
+const T_MAT = "20260623T0645_webui-supporting-materials-management";
+const T_CRE = "20260623T0606_webui-task-creation";
+const T_LST = "20260623T0402_embedded-webui-task-list-improvements";
+const T_FIL = "20260622T1522_embedded-webui-file-mode";
+const DIFFS = {
+  [T_MAT + ":src/web/server.ts"]: { lines: [
+    ["@", "@@ -1,5 +1,6 @@", 1],
+    [" ", 'import express from "express";'],
+    ["+", 'import multer from "multer";'],
+    [" ", 'import { renderTaskDetail } from "./views";'],
+    ["@", "@@ -86,0 +88,10 @@", 88],
+    ["+", "const upload = multer({ storage: multer.memoryStorage() });"],
+    ["+", ""],
+    ["+", 'app.post("/tasks/:taskId/materials", upload.array("materials"), (req, res) => {'],
+    ["+", "  for (const file of req.files ?? []) {"],
+    ["+", "    addSupportingMaterialFile(workflowPath, taskId, file.originalname, file.buffer);"],
+    ["+", "  }"],
+    ["+", "  res.redirect(`/tasks/${encodeURIComponent(taskId)}`);"],
+    ["+", "});"],
+    ["~", "· · · excerpt — full diff continues"]
+  ]},
+  [T_MAT + ":src/web/views.ts"]: { lines: [
+    ["@", "@@ -440,0 +442,10 @@", 442],
+    ["+", "function renderMaterialsUploadForm(task: TaskSummary): string {"],
+    ["+", '  return `<form class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4"'],
+    ["+", '    method="post" action="/tasks/${encodeURIComponent(task.id)}/materials"'],
+    ["+", '    enctype="multipart/form-data">'],
+    ["+", '    <input class="mt-2 block w-full text-sm" name="materials" type="file" multiple>'],
+    ["+", '    <button class="mt-3 rounded-lg bg-blue-700 px-3 py-2" type="submit">Upload</button>'],
+    ["+", "  </form>`;"],
+    ["+", "}"],
+    ["~", "· · · excerpt — Remove buttons and empty states follow"]
+  ]},
+  [T_MAT + ":src/workflow/tasks.ts"]: { lines: [
+    ["@", "@@ -180,0 +182,10 @@", 182],
+    ["+", "export function sanitizeSupportingMaterialFileName(fileName: string): string {"],
+    ["+", '  const baseName = fileName.split(/[\\\\/]/).pop() ?? "";'],
+    ["+", '  return baseName.replace(/[<>:"/\\\\|?*]+/g, "-").trim() || "material";'],
+    ["+", "}"],
+    ["+", ""],
+    ["+", "export function addSupportingMaterialFile("],
+    ["+", "  workflowPath: string, taskId: string, fileName: string, content: Buffer"],
+    ["+", "): SupportingMaterial {"],
+    ["~", "· · · excerpt — unique-name generation and safe delete follow"]
+  ]},
+  [T_MAT + ":package.json"]: { lines: [
+    ["@", "@@ -18,3 +18,4 @@", 18],
+    [" ", '    "express": "^4.19.2",'],
+    ["-", '    "markdown-it": "^14.0.0"'],
+    ["+", '    "markdown-it": "^14.1.0",'],
+    ["+", '    "multer": "^1.4.5-lts.1"'],
+    [" ", "  },"]
+  ]},
+  [T_MAT + ":package-lock.json"]: { lines: [
+    ["@", "@@ -1042,0 +1044,6 @@", 1044],
+    ["+", '    "node_modules/multer": {'],
+    ["+", '      "version": "1.4.5-lts.1",'],
+    ["+", '      "resolved": "https://registry.npmjs.org/multer/-/multer-1.4.5-lts.1.tgz",'],
+    ["+", '      "dependencies": { "busboy": "^1.0.0", "append-field": "^1.0.0" }'],
+    ["+", "    },"],
+    ["~", "· · · excerpt — lockfile continues"]
+  ]},
+  [T_CRE + ":src/workflow/tasks.ts"]: { lines: [
+    ["@", "@@ -60,0 +62,10 @@", 62],
+    ["+", "export function createWorkflowTask("],
+    ["+", "  workflowPath: string, taskName: string, sections?: EditableTaskSections"],
+    ["+", "): CreatedTask {"],
+    ["+", "  const taskId = `${timestamp()}_${toKebabCase(taskName)}`;"],
+    ["+", '  writeFile(taskPath, "task.md", buildTaskMarkdown(sections));'],
+    ["+", '  writeFile(taskPath, "implementation-plan.md", "");'],
+    ["+", '  ensureDir(taskPath, "supporting-materials");'],
+    ["+", "  return { taskId, taskPath };"],
+    ["+", "}"]
+  ]},
+  [T_CRE + ":src/commands/create-task.ts"]: { lines: [
+    ["@", "@@ -12,8 +12,4 @@", 12],
+    ["-", "  const timestamp = buildTimestamp(new Date());"],
+    ["-", "  const folderName = `${timestamp}_${toKebabCase(taskName)}`;"],
+    ["-", "  fs.mkdirSync(taskPath, { recursive: true });"],
+    ["-", "  fs.writeFileSync(path.join(taskPath, 'task.md'), TEMPLATE);"],
+    ["+", "  const { taskId } = createWorkflowTask(workflowPath, taskName);"],
+    ["+", "  console.log('Task created:');"],
+    ["+", "  console.log(`workflow\\\\tasks\\\\${taskId}`);"],
+    ["~", "· · · excerpt — CLI output preserved exactly"]
+  ]},
+  [T_CRE + ":src/web/server.ts"]: { lines: [
+    ["@", "@@ -52,0 +54,8 @@", 54],
+    ["+", 'app.get("/tasks/new", (req, res) => {'],
+    ["+", "  res.send(renderTaskNew());"],
+    ["+", "});"],
+    ["+", ""],
+    ["+", 'app.post("/tasks/new", (req, res) => {'],
+    ["+", "  const created = createWorkflowTask(workflowPath, req.body.taskName, req.body);"],
+    ["+", "  res.redirect(`/tasks/${encodeURIComponent(created.taskId)}`);"],
+    ["+", "});"]
+  ]},
+  [T_CRE + ":src/web/views.ts"]: { lines: [
+    ["@", "@@ -295,0 +297,8 @@", 297],
+    ["+", "export function renderTaskNew(options: { values?: Partial<TaskCreateFormValues>; error?: string } = {}): string {"],
+    ["+", "  const values = normalizeTaskCreateFormValues(options.values);"],
+    ["+", '  return pageLayout("New Task", `<form method="post" action="/tasks/new">'],
+    ["+", "    ${taskNameInput(values.taskName)}"],
+    ["+", '    ${sectionTextarea("Context", values.Context)}'],
+    ["+", '    ${sectionTextarea("Request", values.Request)}'],
+    ["+", '    ${sectionTextarea("Reference", values.Reference)}`);'],
+    ["+", "}"]
+  ]},
+  [T_LST + ":src/workflow/tasks.ts"]: { lines: [
+    ["@", "@@ -24,0 +26,8 @@", 26],
+    ["+", "export interface TaskSummary {"],
+    ["+", "  requestPreview: string;"],
+    ["+", "  hasTaskMarkdown: boolean;"],
+    ["+", "  hasImplementationPlan: boolean;"],
+    ["+", "  supportingMaterialCount: number;"],
+    ["+", "}"],
+    ["~", "· · · excerpt — preview extracted from ## Request, falling back to ## Context"]
+  ]},
+  [T_LST + ":src/web/views.ts"]: { lines: [
+    ["@", "@@ -164,0 +166,8 @@", 166],
+    ["+", "function taskListSearchControls(taskCount: number): string {"],
+    ["+", '  return `<input id="task-search" data-task-search-input type="search"'],
+    ["+", '    placeholder="Search by title, folder name, timestamp, or preview">'],
+    ["+", '    <p data-task-list-count data-total-tasks="${taskCount}">'],
+    ["+", "    ${taskCount} tasks in workflow/tasks/</p>`;"],
+    ["+", "}"],
+    ["~", "· · · excerpt — badges and no-results state follow"]
+  ]},
+  [T_FIL + ":src/commands/serve.ts"]: { lines: [
+    ["@", "@@ -0,0 +1,9 @@", 1],
+    ["+", 'import { createServer } from "../web/server";'],
+    ["+", ""],
+    ["+", "export function serveCommand(): void {"],
+    ["+", "  const app = createServer(detectWorkflowPath(process.cwd()));"],
+    ["+", "  app.listen(4111, () => {"],
+    ["+", '    console.log("AILoveCode Workflow WebUI running at:");'],
+    ["+", '    console.log("http://localhost:4111");'],
+    ["+", "  });"],
+    ["+", "}"]
+  ]},
+  [T_FIL + ":src/cli.ts"]: { lines: [
+    ["@", "@@ -0,0 +1,8 @@", 1],
+    ["+", 'import { serveCommand } from "./commands/serve";'],
+    ["+", ""],
+    ["+", "switch (command) {"],
+    ["+", '  case "init": initCommand(); break;'],
+    ["+", '  case "create-task": createTaskCommand(args); break;'],
+    ["+", '  case "serve": serveCommand(); break;'],
+    ["+", "}"],
+    ["~", "· · · excerpt — update/version commands follow"]
+  ]}
+};
+function getDiff(taskId, path) {
+  const hit = DIFFS[taskId + ":" + path];
+  if (hit) return hit;
+  const base = path.split("/").pop();
+  if (path.endsWith(".html")) {
+    const title = HTML_TITLES[base] || base;
+    return { lines: [
+      ["@", "@@ -0,0 +1 @@ (new file)", 1],
+      ["+", "<!doctype html>"],
+      ["+", '<html lang="en">'],
+      ["+", "<head>"],
+      ["+", '<meta charset="utf-8">'],
+      ["+", '<meta name="viewport" content="width=device-width, initial-scale=1">'],
+      ["+", `<title>${title}</title>`],
+      ["+", "<style>"],
+      ["+", "  :root {"],
+      ["~", "· · · excerpt — full file continues"]
+    ]};
+  }
+  return { lines: [["@", "@@ (new file) @@", 1], ["~", "· · · excerpt not embedded for this file — the real WebUI renders the full diff from git"]] };
+}
+function renderDiffLines(diff) {
+  let n = 1;
+  return diff.lines.map(l => {
+    const [m, text] = l;
+    if (m === "@") { n = l[2] || 1; return `<div class="hunk">${escapeHtml(text)}</div>`; }
+    if (m === "~") return `<div class="dline"><span class="no"></span><span class="mark"></span><span class="code etc">${escapeHtml(text)}</span></div>`;
+    const cls = m === "+" ? "add" : m === "-" ? "del" : "";
+    const num = m === "-" ? "" : n++;
+    return `<div class="dline ${cls}"><span class="no">${num}</span><span class="mark">${m.trim()}</span><span class="code">${escapeHtml(text)}</span></div>`;
+  }).join("");
+}
+
+const $ = s => document.querySelector(s);
+let selectedId = TASKS[0].id, activeSection = "log", selectedFileIdx = 0;
+let selectedRunId = null, composerAgent = "claude", composerModel = null, modeIdx = 0;
+const MODES = ["Discuss", "Plan", "Implement"];
+
+function notify(t) { const el = $("#toast"); el.textContent = t; el.classList.add("show"); clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove("show"), 2300); }
+function escapeHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function cur() { return TASKS.find(t => t.id === selectedId); }
+function planStats(t) {
+  const items = t.milestones.flatMap(m => m.items);
+  const done = items.filter(i => i[1]).length;
+  return { done, total: items.length, pct: Math.round(done / items.length * 100), msDone: t.milestones.filter(m => m.items.every(i => i[1])).length, msTotal: t.milestones.length };
+}
+
+/* ================= PANE 1: TASK LIST ================= */
+function visibleTasks() {
+  const q = $("#q").value.trim().toLowerCase();
+  return TASKS.filter(t => !q || (t.name + " " + t.id + " " + t.preview).toLowerCase().includes(q));
+}
+function renderList() {
+  const tasks = visibleTasks();
+  const groups = [...new Set(tasks.map(t => t.group))];
+  $("#list").innerHTML = tasks.length ? groups.map(g => `
+    <div class="group">${g}</div>
+    ${tasks.filter(t => t.group === g).map(t => `
+      <button class="t-row ${t.id === selectedId ? "sel" : ""}" onclick="pickTask('${t.id}')">
+        <span class="r1"><span class="ph-dot ph-${t.phase}"></span><span class="nm">${t.name}</span><span class="when">${t.created.split(",")[0]}</span></span>
+        ${t.status === "active" && t.note ? `<small>${t.note}</small>` : ""}
+        ${liveRun(t) ? (l => { const a = agentById(l.agent); return `<span class="agent-badge"><i style="background:${a.color}">${a.short}</i>${a.name} · ${l.state === "streaming" ? "working" : "needs approval"}</span>`; })(liveRun(t)) : ""}
+      </button>`).join("")}`).join("") : `<div class="list-empty">No tasks match.</div>`;
+  $("#listCount").textContent = tasks.length + " / " + TASKS.length;
+}
+TASKS.forEach(t => { t.group = t.created.startsWith("Jul") ? "July 2026" : "June 2026"; });
+function pickTask(id) {
+  selectedId = id;
+  selectedFileIdx = 0;
+  renderList();
+  renderSectionMenu();
+  renderPage();
+  closePanes();
+}
+
+/* ================= PANE 2: SECTION MENU ================= */
+function renderSectionMenu() {
+  const t = cur(), s = planStats(t);
+  $("#miniName").textContent = t.name;
+  $("#miniDot").className = "ph-dot ph-" + t.phase;
+  const added = t.changes.filter(c => c[1] === "A").length;
+  const modified = t.changes.length - added;
+  const runs = runsFor(t.id), live = liveRun(t);
+  const meta = {
+    log: { n: `<span class="n">${s.pct}%</span>`, desc: "task.md · understanding · plan · materials" },
+    thread: { n: `<span class="n ${live ? "hot" : ""}">${t.chat.length + runs.length}</span>`, desc: live ? (live.state === "streaming" ? agentById(live.agent).name + " is working now" : agentById(live.agent).name + " needs approval") : `${t.chat.length} messages · ${runs.length} agent turn${runs.length === 1 ? "" : "s"} · chat.md` },
+    changes: { n: `<span class="n">${t.changes.length}</span>`, desc: [added ? added + " added" : "", modified ? modified + " modified" : ""].filter(Boolean).join(" · ") },
+    activity: { n: t.commits.length ? `<span class="n">${t.commits.length}</span>` : "", desc: t.commits.length ? t.commits.length + " commit" + (t.commits.length > 1 ? "s" : "") + " reference this task" : "changes not committed yet" },
+    usage: (u => ({ n: runs.length ? `<span class="n">${u.costLabel}</span>` : "", desc: runs.length ? `${fmtTok(u.tin + u.tout)} tokens · ${u.turns} turn${u.turns === 1 ? "" : "s"} · ${u.costLabel}` : "no agent turns metered yet" }))(usageStats(runs))
+  };
+  $("#secMenu").innerHTML = SECTIONS.map(([k, ic, label]) =>
+    `<button class="sec-btn ${activeSection === k ? "active" : ""}" data-sec="${k}" onclick="setSection('${k}')">
+      <span class="r"><span class="ic">${ic}</span> ${label}${meta[k].n}</span>
+      <span class="desc">${meta[k].desc}</span></button>`).join("");
+}
+function stateLabel(s) { return { streaming: "● live", awaiting: "⚠ approval", done: "done", failed: "failed", queued: "queued" }[s] || s; }
+function setSection(k) {
+  activeSection = k;
+  selectedFileIdx = 0;
+  renderSectionMenu();
+  renderPage();
+}
+
+/* ================= PANE 3: PAGE ================= */
+function renderPage() {
+  const t = cur(), s = planStats(t), inner = $("#workInner");
+  inner.className = "work-inner";
+  $("#crumb").innerHTML = `workflow / tasks / <b>${t.id}</b> / ${SECTION_LABEL[activeSection].toLowerCase()}`;
+  $("#wTitle").textContent = t.name + " — " + SECTION_LABEL[activeSection];
+  const pill = $("#wState");
+  pill.className = "state-pill " + (t.status === "done" ? "done" : "active");
+  pill.textContent = t.status === "done" ? "Done" : "In progress";
+  $("#editBtn").style.display = activeSection === "log" ? "" : "none";
+  $("#composerWrap").style.display = activeSection === "thread" ? "" : "none";
+
+  if (activeSection === "log") {
+    inner.innerHTML = `
+      <div class="jump-row" role="navigation" aria-label="Work log sections">
+        ${[["j-task", "task.md"], ["j-und", "Understanding"], ["j-plan", "Plan"], ["j-mat", "Materials"]].map(([id, l]) => `<button onclick="jumpTo('${id}')">${l}</button>`).join("")}
+      </div>
+      <div id="j-task">
+        <div class="own-box human"><strong>● task.md — editable by you</strong>
+          <p>Human-owned source of truth. Agents read this file but never silently rewrite it.</p></div>
+        <div class="sec-title">Context</div><div class="md">${t.context}</div>
+        <div class="sec-title">Request</div><div class="md">${t.request}</div>
+        <div class="sec-title">Reference</div>${t.reference ? `<div class="md">${t.reference}</div>` : `<div class="empty-box">No reference material added.</div>`}
+      </div>
+      <div id="j-und" style="margin-top:26px">
+        <div class="sec-title">Agent understanding</div>
+        <div class="md"><p>${t.summary}</p></div>
+        <div class="agent-note">Ownership honored: <strong>task.md</strong> above stays yours; the plan below lives in <strong>implementation-plan.md</strong> and is shown read-only.</div>
+      </div>
+      <div id="j-plan" style="margin-top:26px">
+        <div class="own-box ai-owned"><strong>● implementation-plan.md — AI-owned</strong>
+          <p>Written by the agent during planning. Read-only in the WebUI.</p></div>
+        <div class="ring-row">
+          <span class="ring" data-pct="${s.pct}%" style="background:conic-gradient(var(--heart) 0 ${s.pct}%, #223146 ${s.pct}%)"></span>
+          <div><strong>${t.name}</strong><small>${s.msDone} of ${s.msTotal} milestones · ${s.done}/${s.total} tasks checked</small></div>
+        </div>
+        <div class="plan-card" style="margin-top:8px">
+          <div class="pc-bar"><i style="width:${s.pct}%"></i></div>
+          ${milestoneRows(t, false)}
+        </div>
+        ${t.implementedIn.length ? `<div class="sec-title" style="margin-top:14px">Implemented in</div>
+        <div class="files-strip">${t.implementedIn.map(f => `<span class="file-chip"><i>◆</i>${f}</span>`).join("")}</div>` : ""}
+      </div>
+      <div id="j-mat" style="margin-top:26px">
+        <div class="sec-title">Supporting materials</div>
+        ${t.materials.length ? t.materials.map(f => `
+        <div class="mat-item">
+          <span class="mat-icon">${f.ext}</span>
+          <span><span class="nm">${f.name}</span><br>
+            <span class="pth">supporting-materials/${f.name}</span>
+            <span class="mat-actions"><a href="#" onclick="notify('Demo: opens the file');return false">Open</a>
+            <a href="#" onclick="notify('Demo: downloads the file');return false">Download</a>
+            <a href="#" onclick="notify('Demo: removes after confirmation');return false" style="color:var(--ink-3)">Remove</a></span></span>
+          <span class="sz">${f.size}</span>
+        </div>`).join("") : `<div class="empty-box">No files in this task's supporting-materials/ folder.</div>`}
+        <div class="upload-box">Drop files here or <b>browse</b> — saved to supporting-materials/ · cite paths in Reference</div>
+      </div>`;
+  }
+
+  else if (activeSection === "thread") {
+    const runs = runsFor(t.id);
+    const items = [];
+    t.chat.forEach((m, i) => {
+      runs.filter(r => r.pos === i).forEach(r => items.push({ run: r }));
+      items.push({ msg: m });
+    });
+    runs.filter(r => r.pos == null || r.pos >= t.chat.length).reverse().forEach(r => items.push({ run: r }));
+    inner.innerHTML = `
+      <div class="chat-session-note">⛁ One thread per task — your messages saved as <b>chat.md</b>, agent turns recorded per run · <b>task.md</b> stays human-owned</div>
+      ${items.length ? items.map(it => it.msg ? chatMsgHtml(it.msg) : runTurnHtml(it.run)).join("")
+        : `<div class="empty-box">No conversation yet — pick an agent below and send a message. Every SDK backend (Claude Agent SDK, Codex SDK, Pi coding agent, …) reports the same turn/event schema, so this thread looks identical whichever agent does the work.</div>`}`;
+    $("#workBody").scrollTop = $("#workBody").scrollHeight;
+    return;
+  }
+
+  else if (activeSection === "changes") {
+    inner.className = "work-inner full";
+    if (selectedFileIdx >= t.changes.length) selectedFileIdx = 0;
+    const [fp, , fa, fd] = t.changes[selectedFileIdx];
+    const totAdd = t.changes.reduce((a, c) => a + c[2], 0);
+    const totDel = t.changes.reduce((a, c) => a + c[3], 0);
+    inner.innerHTML = `
+      <div class="gh">
+        <div class="gh-files">
+          <div class="gh-files-head">${t.changes.length} changed file${t.changes.length === 1 ? "" : "s"}
+            <span style="float:right"><span class="plus" style="color:var(--green);font-weight:700">+${totAdd}</span>
+            <span class="minus" style="color:#f87171;font-weight:700">−${totDel}</span></span></div>
+          ${t.changes.map((f, i) => `<button class="gh-file ${i === selectedFileIdx ? "sel" : ""}" onclick="selectedFileIdx=${i};renderPage()">
+            <span class="p">&lrm;${f[0]}</span><span class="st ${f[1] === "A" ? "a" : "m"}">${f[1] === "A" ? "＋" : "●"}</span></button>`).join("")}
+        </div>
+        <div class="gh-diff">
+          <div class="gh-diff-head"><span class="fp">${fp}</span><span class="plus">+${fa}</span><span class="minus">−${fd}</span></div>
+          <div class="gh-diff-body">${renderDiffLines(getDiff(t.id, fp))}</div>
+        </div>
+      </div>
+      <div class="chg-note" style="margin-top:12px">Diffs shown as excerpts in this demo — the real WebUI renders full diffs from git.</div>`;
+  }
+
+  else if (activeSection === "usage") {
+    const runs = runsFor(t.id);
+    if (!runs.length) {
+      inner.innerHTML = `<div class="empty-box">No usage recorded — this task has no agent turns yet. Every turn's tokens, cache reads, and cost land here automatically.</div>`;
+      $("#workBody").scrollTop = 0;
+      return;
+    }
+    const st = usageStats(runs);
+    const byAgent = [...new Set(runs.map(r => r.agent))].map(id => {
+      const a = agentById(id), ar = runs.filter(r => r.agent === id), au = usageStats(ar);
+      return { a, ar, au };
+    });
+    const chrono = runs.slice().reverse();
+    inner.innerHTML = `
+      <div class="stat-grid">
+        <div class="stat"><div class="v">${fmtTok(st.tin)}</div><div class="l">Tokens in</div></div>
+        <div class="stat"><div class="v">${fmtTok(st.tout)}</div><div class="l">Tokens out</div></div>
+        <div class="stat"><div class="v">${fmtTok(st.cache)}</div><div class="l">Cache reads</div></div>
+        <div class="stat"><div class="v">${st.costLabel}</div><div class="l">Est. cost</div></div>
+        <div class="stat"><div class="v">${fmtDur(st.secs)}</div><div class="l">Agent time</div></div>
+        <div class="stat"><div class="v">${st.turns}</div><div class="l">Turns</div></div>
+      </div>
+      ${st.planTurns ? `<div class="chg-note">≈ cost covers API-billed turns only — ${st.planTurns} turn${st.planTurns > 1 ? "s are" : " is"} billed via a subscription plan (no per-token cost) and excluded from the total.</div>` : ""}
+      <div class="sec-title" style="margin-top:18px">By agent</div>
+      ${byAgent.map(({ a, ar, au }) => `
+      <div class="ua-row">
+        <span class="av" style="background:${a.color}">${a.short}</span>
+        <span><strong>${a.name}</strong><small>${ar.length} turn${ar.length > 1 ? "s" : ""} · ${fmtTok(au.tin)} in · ${fmtTok(au.tout)} out · ${fmtDur(au.secs)}</small></span>
+        <span class="num">${a.billing === "plan" ? "plan" : "≈ $" + au.cost.toFixed(2)}<small>${a.billing === "plan" ? "subscription" : "avg $" + (au.cost / ar.length).toFixed(2) + " / turn"}</small></span>
+      </div>`).join("")}
+      <div class="sec-title" style="margin-top:18px">By turn</div>
+      <div class="u-scroll"><table class="u-table" aria-label="Usage per agent turn">
+        <thead><tr><th>Agent</th><th>Mode</th><th>Model</th><th class="r">In</th><th class="r">Out</th><th class="r">Cache</th><th class="r">Time</th><th class="r">Cost</th><th>State</th></tr></thead>
+        <tbody>${chrono.map(r => {
+          const a = agentById(r.agent);
+          return `<tr onclick="gotoTurn('${r.id}')" title="Open this turn in the thread">
+            <td><span class="agent-badge"><i style="background:${a.color}">${a.short}</i>${a.name}</span></td>
+            <td>${r.mode}</td><td>${r.model}</td>
+            <td class="r">${r.usage.tin}</td><td class="r">${r.usage.tout}</td><td class="r">${r.usage.cache || "0"}</td>
+            <td class="r">${r.dur}</td><td class="r">${r.usage.cost === "plan" ? "plan" : r.usage.cost}</td>
+            <td><span class="st-txt">${stateLabel(r.state)}</span></td></tr>`;
+        }).join("")}</tbody>
+      </table></div>
+      <div class="chg-note" style="margin-top:12px">Derived by summing per-run records stored in this task's folder — file-based like everything else; rows open the matching turn in the Thread.</div>`;
+    $("#workBody").scrollTop = 0;
+    return;
+  }
+
+  else if (activeSection === "activity") {
+    inner.innerHTML = (t.commits.length ? `
+      <div class="sec-title">Commits referencing this task</div>
+      ${t.commits.map(c => `<div class="commit"><span class="c-dot"></span>
+        <span><span class="c-msg">${c.m.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span><br>
+        <span class="c-meta">${c.h} · ${c.d}</span></span></div>`).join("")}`
+      : `<div class="empty-box">No commits reference this task yet — its changes are still uncommitted in the working tree.</div>`) + `
+      <div class="sec-title" style="margin-top:18px">Repository head</div>
+      <div class="md"><p style="font:10px var(--mono);color:var(--ink-3)">workflow-dev · main · ${COMMITS_HEAD.h} — ${COMMITS_HEAD.m.replace(/</g, "&lt;")}</p></div>`;
+  }
+
+  $("#workBody").scrollTop = 0;
+}
+
+function milestoneRows(t, forceOpen) {
+  return t.milestones.map(m => {
+    const mDone = m.items.every(x => x[1]);
+    const nDone = m.items.filter(x => x[1]).length;
+    const open = forceOpen ? !mDone : (!mDone && t.status === "active");
+    return `<div class="ms ${mDone ? "done" : ""} ${open ? "open" : ""}">
+      <button class="ms-btn" onclick="this.parentElement.classList.toggle('open')">
+        <span class="ms-check ${mDone ? "done" : ""}">${mDone ? "✓" : ""}</span>
+        <strong>${m.name}</strong><span class="n">${nDone}/${m.items.length}</span><span class="chev">›</span></button>
+      <div class="ms-items">${m.items.map(([label, done]) => `<div class="ms-item ${done ? "done" : ""}"><span class="bx">${done ? "✓" : ""}</span><span>${label}</span></div>`).join("")}</div>
+    </div>`;
+  }).join("");
+}
+
+function chatMsgHtml(m) {
+  const you = m.who === "you";
+  return `<article class="msg">
+    <span class="speaker ${you ? "" : "ai"}">${you ? "You" : "A"}</span>
+    <div><div class="who">${you ? "You" : "Agent"} <time>${m.t}</time></div>
+    <div class="bubble ${you ? "you-chat" : ""}">${m.html}${you ? `
+      <div class="save-line"><button onclick="notify('Demo: appends this message to task.md — the only way chat touches your file')">↳ Save to task.md</button></div>` : ""}</div></div>
+  </article>`;
+}
+
+/* ================= RUN TIMELINE EVENTS ================= */
+function runEventHtml(r, e, i) {
+  const isLastText = r.state === "streaming" && i === r.events.length - 1 && e.k === "text";
+  const meta = `<div class="rt-meta">${e.t}</div>`;
+  if (e.k === "text") return `<div class="rt-ev">${meta}<div class="rt-text">${escapeHtml(e.txt)}${isLastText ? '<span class="cursor" aria-hidden="true"></span>' : ""}</div></div>`;
+  if (e.k === "tool") return `<div class="rt-ev ev-tool">${meta}<details class="tool-card" ${e.done ? "" : "open"}>
+      <summary><span class="tname">${e.name}</span><span class="tin">${escapeHtml(e.input)}</span>${e.done ? '<span class="tok">✓</span>' : '<span class="tspin" aria-label="running"></span>'}</summary>
+      <div class="tres">${escapeHtml(e.result || "…")}</div></details></div>`;
+  if (e.k === "perm") return `<div class="rt-ev ev-perm">${meta}<div class="perm-card ${e.state !== "pending" ? "decided" : ""}" id="perm-${r.id}-${i}">
+      <div class="pc-t">⚠ Permission request · ${agentById(r.agent).name}</div>
+      <div style="font-size:11.5px;color:var(--ink-2);margin-top:5px">${escapeHtml(e.desc)}</div>
+      <code>${escapeHtml(e.cmd)}</code>
+      ${e.state === "pending" ? `<div class="pc-a">
+        <button class="pc-btn ok" onclick="decidePerm('${r.id}',${i},'approved')">Approve</button>
+        <button class="pc-btn no" onclick="decidePerm('${r.id}',${i},'denied')">Deny</button>
+        <button class="pc-btn always" onclick="decidePerm('${r.id}',${i},'approved','always')">Always allow this command</button>
+      </div><div class="perm-note">The run is paused — nothing executes until you decide. Decisions map to each SDK's native permission hook.</div>`
+      : `<div class="perm-note">${e.state === "approved" ? "✓ Approved" : "✕ Denied"} — recorded in the run log.</div>`}
+    </div></div>`;
+  if (e.k === "file") return `<div class="rt-ev ev-file">${meta}<button class="file-ev" onclick="setSection('changes')" aria-label="Open diff for ${e.path}">
+      ± ${e.path} <span class="plus">+${e.add}</span> <span class="minus">−${e.del}</span></button></div>`;
+  if (e.k === "ckpt") return `<div class="rt-ev ev-ckpt">${meta}<div class="ckpt-card">${e.html}</div></div>`;
+  if (e.k === "err") return `<div class="rt-ev ev-err">${meta}<div class="err-card">${escapeHtml(e.msg)}</div></div>`;
+  return "";
+}
+function runTurnHtml(r) {
+  const a = agentById(r.agent);
+  const live = r.state === "streaming" || r.state === "awaiting";
+  const open = live || r.id === selectedRunId;
+  return `<div class="turn ${open ? "open" : ""}" id="turn-${r.id}">
+    <div class="turn-head" role="button" tabindex="0" aria-expanded="${open}" aria-label="Agent turn — ${a.name}, ${r.mode}, ${stateLabel(r.state)}"
+      onclick="toggleTurn('${r.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTurn('${r.id}')}">
+      <span class="av" style="background:${a.color}">${a.short}</span>
+      <span style="min-width:0;flex:1"><strong>${a.name} <span style="color:var(--ink-3);font-weight:400">· ${r.mode}</span></strong>
+      <small>${r.model} · ${r.started} · ${r.dur} · ${r.usage.cost}</small></span>
+      <span class="run-state ${r.state === "awaiting" ? "awaiting" : r.state}">${{ streaming: "Streaming", awaiting: "Awaiting approval", done: "Completed", failed: "Failed", queued: "Queued" }[r.state]}</span>
+      <span class="chev">›</span>
+    </div>
+    <div class="turn-body">
+      <div class="rt">${r.events.map((e, i) => runEventHtml(r, e, i)).join("")}</div>
+      <div class="usage-bar"><span>tokens in <b>${r.usage.tin}</b></span><span>out <b>${r.usage.tout}</b></span><span>cost <b>${r.usage.cost}</b></span>
+        <span style="margin-left:auto">${live ? `<button class="pc-btn no" onclick="notify('Demo: interrupts the ${a.name} session for this turn')">◼ Stop</button>` : `<button class="pc-btn always" onclick="notify('Demo: re-runs this prompt — pick any agent, same task context')">↻ Re-run</button>`}</span></div>
+    </div>
+  </div>`;
+}
+function toggleTurn(id) {
+  const el = document.getElementById("turn-" + id);
+  el.classList.toggle("open");
+  el.querySelector(".turn-head").setAttribute("aria-expanded", el.classList.contains("open"));
+}
+function jumpTo(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function gotoTurn(runId) {
+  const r = RUNS.find(x => x.id === runId);
+  if (!r) return;
+  selectedId = r.task; activeSection = "thread"; selectedRunId = runId;
+  refreshAgentUI();
+  setTimeout(() => jumpTo("turn-" + runId), 60);
+}
+function decidePerm(runId, evIdx, decision, always) {
+  const r = RUNS.find(x => x.id === runId);
+  const e = r.events[evIdx];
+  e.state = decision;
+  if (decision === "approved") {
+    r.state = "streaming";
+    r.events.push({ k: "tool", t: "now", name: "Bash", input: e.cmd, result: "", done: 0 });
+    setTimeout(() => {
+      const tool = r.events[r.events.length - 1];
+      tool.done = 1; tool.result = "build ok · render-check passed at 390px and 1280px";
+      r.events.push({ k: "text", t: "now", txt: "Command finished cleanly — continuing with the remaining milestone items." });
+      r.state = "done"; r.dur = "10m 12s";
+      const ag = agentById(r.agent); ag.status = "idle";
+      refreshAgentUI();
+      notify(agentById(r.agent).name + " finished the run");
+    }, 2600);
+  } else {
+    r.events.push({ k: "text", t: "now", txt: "Understood — skipping that command. Tell me in chat how you'd like to proceed." });
+    r.state = "done";
+    agentById(r.agent).status = "idle";
+  }
+  if (always) notify("Demo: added to this agent's allowlist for future runs");
+  refreshAgentUI();
+}
+function refreshAgentUI() {
+  renderAgentsCluster();
+  renderSectionMenu();
+  renderList();
+  renderPage();
+}
+
+/* ================= TOP BAR: AGENT CLUSTER + APPROVALS ================= */
+function renderAgentsCluster() {
+  $("#agentsCluster").innerHTML = AGENTS.map(a =>
+    `<button class="agent-pip st-${a.status}" style="background:${a.color}" title="${a.name} — ${a.status}" aria-label="${a.name} — ${a.status}" onclick="openRegistry()">${a.short}</button>`).join("");
+  const pend = pendingPerms();
+  $("#approvalsBtn").style.display = pend.length ? "" : "none";
+  $("#approvalsBdg").textContent = pend.length;
+}
+function gotoApprovals() {
+  const p = pendingPerms()[0];
+  if (!p) return;
+  selectedId = p.run.task; activeSection = "thread"; selectedRunId = p.run.id;
+  refreshAgentUI();
+  closePanes();
+  setTimeout(() => jumpTo("turn-" + p.run.id), 60);
+}
+
+/* ================= AGENT REGISTRY OVERLAY ================= */
+function openRegistry() {
+  closeOverlays();
+  $("#rgBody").innerHTML = AGENTS.map(a => `
+    <div class="rg-row">
+      <span class="av" style="background:${a.color}">${a.short}</span>
+      <span style="min-width:0;flex:1">
+        <strong>${a.name}</strong><span class="vend">${a.vendor} · ${a.kind}</span>
+        <span class="pkg">${a.pkg} · ${a.models.join(" · ")}</span>
+        <span class="rg-caps">${Object.entries(CAP_LABELS).map(([k, l]) => `<span class="cap ${a.caps[k] ? "y" : ""}">${a.caps[k] ? "✓ " : ""}${l}</span>`).join("")}</span>
+      </span>
+      <span class="rg-st"><span class="run-state ${a.status === "running" ? "streaming" : a.status === "awaiting" ? "awaiting" : a.status === "offline" ? "failed" : "done"}">${a.status}</span>
+      <small>${a.status === "offline" ? "binary not found on PATH" : "adapter connected"}</small></span>
+    </div>`).join("");
+  $("#registry").classList.add("open");
+  $("#overlayScrim").classList.add("open");
+}
+
+/* ================= COMPOSER: AGENT PICKER + MODE ================= */
+function renderAgentPick() {
+  const a = agentById(composerAgent);
+  const model = composerModel || a.models[0];
+  $("#agentPickBtn").innerHTML = `<i style="background:${a.color}">${a.short}</i> ${a.name} <span class="mdl">${model} ▾</span>`;
+  $("#pickMenu").innerHTML = `<div class="pm-head">Run this task with</div>` + AGENTS.map(x =>
+    `<button type="button" class="pm-item ${x.id === composerAgent ? "sel" : ""}" role="option" aria-selected="${x.id === composerAgent}" ${x.status === "offline" ? "disabled" : ""} onclick="pickAgent('${x.id}')">
+      <i style="background:${x.color}">${x.short}</i>
+      <span style="min-width:0"><strong>${x.name}</strong><small>${x.models[0]} · ${x.status === "offline" ? "offline" : Object.keys(CAP_LABELS).filter(k => x.caps[k]).length + " capabilities"}</small></span>
+      ${x.id === composerAgent ? '<span class="chk">✓</span>' : ""}</button>`).join("");
+}
+function togglePickMenu(ev) {
+  ev.stopPropagation();
+  const open = $("#pickMenu").classList.toggle("open");
+  $("#agentPickBtn").setAttribute("aria-expanded", open);
+}
+function pickAgent(id) {
+  composerAgent = id; composerModel = null;
+  $("#pickMenu").classList.remove("open");
+  renderAgentPick();
+  notify("Agent for this task set to " + agentById(id).name);
+}
+function cycleMode() {
+  modeIdx = (modeIdx + 1) % MODES.length;
+  $("#modeBtn").textContent = "Mode: " + MODES[modeIdx] + " ▾";
+  notify(MODES[modeIdx] === "Discuss" ? "Discuss — chat only, no files touched" : MODES[modeIdx] === "Plan" ? "Plan — agent may write implementation-plan.md" : "Implement — agent works the plan; task.md stays yours");
+}
+document.addEventListener("click", () => { $("#pickMenu").classList.remove("open"); $("#agentPickBtn").setAttribute("aria-expanded", "false"); });
+
+/* ================= COMMAND PALETTE ================= */
+let palIdx = 0;
+function paletteItems() {
+  const q = $("#palInput").value.trim().toLowerCase();
+  const items = [];
+  TASKS.forEach(t => items.push({ g: "Tasks", ic: "▤", label: t.name, hint: t.id.split("_")[0], act: () => { pickTask(t.id); } }));
+  SECTIONS.forEach(([k, ic, l]) => items.push({ g: "Sections", ic, label: cur().name + " → " + l, hint: "section", act: () => setSection(k) }));
+  RUNS.forEach(r => { const a = agentById(r.agent); items.push({ g: "Agent turns", ic: "◈", label: a.name + " · " + (TASKS.find(t => t.id === r.task) || {}).name, hint: stateLabel(r.state), act: () => gotoTurn(r.id) }); });
+  items.push({ g: "Actions", ic: "⚙", label: "Open agent registry", hint: "agents", act: openRegistry });
+  items.push({ g: "Actions", ic: "＋", label: "New task", hint: "create", act: () => notify("Demo: creates task.md + empty plan + supporting-materials/") });
+  const pend = pendingPerms();
+  if (pend.length) items.push({ g: "Actions", ic: "⚠", label: "Review pending approval (" + pend.length + ")", hint: "approvals", act: gotoApprovals });
+  return q ? items.filter(i => (i.g + " " + i.label + " " + i.hint).toLowerCase().includes(q)) : items;
+}
+function renderPalette() {
+  const items = paletteItems();
+  palIdx = Math.min(palIdx, Math.max(0, items.length - 1));
+  let g = "";
+  $("#palList").innerHTML = items.length ? items.map((it, i) => {
+    const head = it.g !== g ? `<div class="pal-group">${it.g}</div>` : "";
+    g = it.g;
+    return head + `<button class="pal-item ${i === palIdx ? "hi" : ""}" data-pi="${i}" onclick="runPalItem(${i})"><span class="ic">${it.ic}</span>${it.label}<span class="hint">${it.hint}</span></button>`;
+  }).join("") : `<div class="pal-empty">Nothing matches — try a task name, section, or agent.</div>`;
+}
+function runPalItem(i) {
+  const it = paletteItems()[i];
+  closeOverlays();
+  if (it) it.act();
+}
+function openPalette() {
+  closeOverlays();
+  palIdx = 0;
+  $("#palInput").value = "";
+  $("#palette").classList.add("open");
+  $("#overlayScrim").classList.add("open");
+  renderPalette();
+  $("#palInput").focus();
+}
+function closeOverlays() {
+  $("#palette").classList.remove("open");
+  $("#registry").classList.remove("open");
+  $("#overlayScrim").classList.remove("open");
+}
+$("#palInput").addEventListener("keydown", e => {
+  const items = paletteItems();
+  if (e.key === "ArrowDown") { e.preventDefault(); palIdx = Math.min(palIdx + 1, items.length - 1); renderPalette(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); palIdx = Math.max(palIdx - 1, 0); renderPalette(); }
+  else if (e.key === "Enter") { e.preventDefault(); runPalItem(palIdx); }
+});
+$("#approvalsBtn").addEventListener("click", gotoApprovals);
+
+/* ================= COMPOSER ================= */
+$("#composer").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = $("#promptBox"), value = input.value.trim();
+  if (!value) return;
+  const t = cur(), a = agentById(composerAgent), mode = MODES[modeIdx];
+  t.chat.push({ who: "you", t: "now", html: "<p>" + escapeHtml(value) + "</p>" });
+  input.value = "";
+  renderSectionMenu(); renderPage();
+  setTimeout(() => {
+    t.chat.push({ who: "agent", t: "now", html: `<p>Routed to <b>${a.name}</b> (${composerModel || a.models[0]}, ${mode.toLowerCase()} mode). ${mode === "Discuss" ? "Reply lands here — no files touched." : "A new agent turn has started — it streams live below in this thread."} <span style='color:var(--ink-3)'>(demo)</span></p>` });
+    if (mode !== "Discuss") {
+      const run = { id: "r-" + Math.floor(Math.random() * 900 + 100), task: t.id, agent: a.id, model: composerModel || a.models[0], mode,
+        state: "streaming", started: "now", dur: "0m 04s", usage: { tin: "1.1k", tout: "0.1k", cache: "0.3k", cost: "$0.01" },
+        events: [{ k: "text", t: "now", txt: "Session opened via " + a.pkg + ". Reading task.md and the current plan before acting" }] };
+      RUNS.unshift(run);
+      a.status = "running";
+      renderAgentsCluster();
+      setTimeout(() => {
+        run.events.push({ k: "tool", t: "now", name: "Read", input: "workflow/tasks/" + t.id + "/task.md", result: "Context · Request · Reference parsed", done: 1 });
+        run.events.push({ k: "text", t: "now", txt: mode === "Plan" ? "Drafting the implementation plan — milestones with exit criteria, per the workflow guidelines." : "Working the plan. task.md stays untouched; progress lands in implementation-plan.md." });
+        run.state = "done"; run.dur = "0m 39s"; a.status = "idle";
+        refreshAgentUI();
+        notify(a.name + " finished — run recorded in Runs");
+      }, 3800);
+    }
+    renderSectionMenu(); renderPage();
+  }, 650);
+});
+
+/* ================= LIVE RUN STREAMING SIMULATION ================= */
+const STREAM_SCRIPT = [
+  { k: "tool", t: "23:17", name: "Edit", input: "design-8-agent-hub.html — run timeline renderer + permission cards", result: "applied — 214 lines added", done: 1 },
+  { k: "text", t: "23:18", txt: "Timeline renders all six event kinds. Adding the command palette and keyboard layer next" },
+  { k: "file", t: "23:19", path: "webui-enhancement/claude/design-8-agent-hub.html", add: 214, del: 3 },
+  { k: "ckpt", t: "23:20", html: "<b>Development Checkpoint:</b> the agent hub is runnable — open it in a browser, watch this run stream, and try the approval flow on the Codex task." }
+];
+let streamStep = 0;
+const streamTimer = setInterval(() => {
+  const r = RUNS.find(x => x.id === "r-014");
+  if (!r || r.state !== "streaming") { clearInterval(streamTimer); return; }
+  if (streamStep < STREAM_SCRIPT.length) {
+    r.events.push(STREAM_SCRIPT[streamStep++]);
+  } else {
+    r.state = "done"; r.dur = "8m 07s";
+    agentById("claude").status = "idle";
+    clearInterval(streamTimer);
+    notify("Claude Agent SDK finished the design-8 run");
+  }
+  renderAgentsCluster();
+  renderSectionMenu();
+  if (activeSection === "thread" && cur().id === r.task) renderPage();
+}, 4200);
+
+/* ================= RESPONSIVE ================= */
+const tasksPane = $("#tasksPane"), scrim = $("#scrim");
+function closePanes() { tasksPane.classList.remove("open"); scrim.classList.remove("open"); }
+$("#openTasks").addEventListener("click", () => { tasksPane.classList.add("open"); scrim.classList.add("open"); });
+scrim.addEventListener("click", closePanes);
+
+/* ================= KEYBOARD LAYER ================= */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeOverlays(); closePanes(); $("#pickMenu").classList.remove("open"); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+  if (typing) return;
+  if (e.key === "/") { e.preventDefault(); $("#q").focus(); return; }
+  if (e.key === "j" || e.key === "k") {
+    const list = visibleTasks();
+    if (!list.length) return;
+    const i = list.findIndex(t => t.id === selectedId);
+    const next = list[Math.min(Math.max(i + (e.key === "j" ? 1 : -1), 0), list.length - 1)];
+    if (next && next.id !== selectedId) pickTask(next.id);
+  }
+});
+
+/* ================= INIT ================= */
+renderList();
+renderSectionMenu();
+renderPage();
+renderAgentsCluster();
+renderAgentPick();
+if (location.hash && location.hash.length > 1) {
+  const parts = decodeURIComponent(location.hash.slice(1)).split("/");
+  const tid = parts.length > 1 ? parts[0] : null, k = parts[parts.length - 1];
+  if (tid && TASKS.some(t => t.id === tid)) { selectedId = tid; renderList(); }
+  if (SECTION_LABEL[k]) setSection(k); else renderSectionMenu();
+}
+</script>
+</body>
+</html>

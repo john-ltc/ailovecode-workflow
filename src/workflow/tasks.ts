@@ -266,12 +266,16 @@ export function readGuidelines(workflowPath: string): string {
   return readTextFileIfExists(path.join(workflowPath, "guidelines.md"));
 }
 
-export function listSupportingMaterials(workflowPath: string, taskId: string): SupportingMaterial[] {
+export function getSupportingMaterialsPath(workflowPath: string, taskId: string): string {
   const materialsPath = path.join(getTaskPath(workflowPath, taskId), "supporting-materials");
 
-  if (!fs.existsSync(materialsPath)) {
-    return [];
-  }
+  fs.mkdirSync(materialsPath, { recursive: true });
+
+  return materialsPath;
+}
+
+export function listSupportingMaterials(workflowPath: string, taskId: string): SupportingMaterial[] {
+  const materialsPath = getSupportingMaterialsPath(workflowPath, taskId);
 
   const materials: SupportingMaterial[] = [];
   collectSupportingMaterials(materialsPath, materialsPath, materials);
@@ -303,12 +307,67 @@ function collectSupportingMaterials(rootPath: string, currentPath: string, mater
   }
 }
 
+export function sanitizeSupportingMaterialFileName(fileName: string): string {
+  const baseName = fileName.split(/[\\/]/).pop() ?? "";
+  const sanitizedName = baseName
+    .replace(/[\x00-\x1f\x80-\x9f]/g, "")
+    .replace(/[<>:"/\\|?*]+/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/^-+|-+$/g, "")
+    .replace(/^\.+/, "")
+    .trim();
+
+  return sanitizedName || "material";
+}
+
+function uniqueSupportingMaterialFileName(materialsPath: string, fileName: string): string {
+  const extension = path.extname(fileName);
+  const name = fileName.slice(0, fileName.length - extension.length) || "material";
+  let candidateName = fileName;
+  let index = 1;
+
+  while (fs.existsSync(safeResolveWithin(materialsPath, candidateName))) {
+    candidateName = `${name}-${index}${extension}`;
+    index += 1;
+  }
+
+  return candidateName;
+}
+
+export function addSupportingMaterialFile(
+  workflowPath: string,
+  taskId: string,
+  fileName: string,
+  content: Buffer,
+): SupportingMaterial {
+  const materialsPath = getSupportingMaterialsPath(workflowPath, taskId);
+  const safeFileName = uniqueSupportingMaterialFileName(
+    materialsPath,
+    sanitizeSupportingMaterialFileName(fileName),
+  );
+  const materialPath = safeResolveWithin(materialsPath, safeFileName);
+
+  fs.writeFileSync(materialPath, content);
+
+  return {
+    name: safeFileName,
+    relativePath: safeFileName,
+    size: content.length,
+  };
+}
+
+export function removeSupportingMaterial(workflowPath: string, taskId: string, materialRelativePath: string): void {
+  const materialPath = resolveSupportingMaterialPath(workflowPath, taskId, materialRelativePath);
+
+  fs.unlinkSync(materialPath);
+}
+
 export function resolveSupportingMaterialPath(
   workflowPath: string,
   taskId: string,
   materialRelativePath: string,
 ): string {
-  const materialsPath = path.join(getTaskPath(workflowPath, taskId), "supporting-materials");
+  const materialsPath = getSupportingMaterialsPath(workflowPath, taskId);
   const materialPath = safeResolveWithin(materialsPath, materialRelativePath);
 
   if (!fs.existsSync(materialPath) || !fs.statSync(materialPath).isFile()) {

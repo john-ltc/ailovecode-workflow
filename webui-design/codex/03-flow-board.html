@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flow Board — AILoveCode Workflow</title>
+  <style>
+    :root { --night:#101317; --night2:#181c21; --panel:#20252b; --line:#343b43; --text:#f5f6f2; --muted:#9aa3aa; --cyan:#73e1dc; --violet:#9e8cff; --peach:#ffab7a; --yellow:#e9df70; --green:#7dde9a; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--night); color:var(--text); font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; overflow-x:hidden; }
+    button,input { font:inherit; }
+    button { cursor:pointer; }
+    a { color:inherit; text-decoration:none; }
+    :focus-visible { outline:3px solid var(--cyan); outline-offset:3px; }
+    .noise { position:fixed; inset:0; pointer-events:none; opacity:.22; background-image:radial-gradient(rgba(255,255,255,.12) .6px,transparent .6px); background-size:7px 7px; mask-image:linear-gradient(to bottom,black,transparent 85%); }
+    header { height:76px; padding:0 26px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:26px; background:rgba(16,19,23,.88); backdrop-filter:blur(12px); position:sticky; top:0; z-index:20; }
+    .brand { display:flex; align-items:center; gap:11px; font-weight:850; letter-spacing:-.03em; }
+    .mark { position:relative; width:34px; height:34px; border:2px solid var(--cyan); border-radius:11px; transform:rotate(8deg); }
+    .mark::after { content:""; position:absolute; inset:7px; border-radius:5px; background:var(--violet); }
+    .project-switch { display:flex; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--line); border-radius:9px; color:#c6ccd0; font-size:12px; }
+    .project-switch::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--green); }
+    .head-nav { margin-left:auto; display:flex; gap:7px; }
+    .head-nav button { border:0; border-radius:8px; padding:9px 12px; background:transparent; color:var(--muted); }
+    .head-nav button.active,.head-nav button:hover { background:var(--panel); color:white; }
+    .create { border:0!important; background:var(--cyan)!important; color:#122020!important; font-weight:800; }
+    .mobile-nav { display:none; margin-left:auto; width:40px; height:40px; border:1px solid var(--line); border-radius:9px; background:var(--panel); color:white; }
+    main { padding:38px 28px 70px; }
+    .hero { display:grid; grid-template-columns:1fr auto; gap:25px; align-items:end; margin:0 auto 29px; max-width:1500px; }
+    .eyebrow { color:var(--cyan); font-size:10px; font-weight:850; letter-spacing:.19em; text-transform:uppercase; }
+    h1 { margin:8px 0 0; font-size:clamp(34px,5vw,64px); line-height:.97; letter-spacing:-.06em; }
+    .hero p { max-width:620px; margin:15px 0 0; color:var(--muted); font-size:15px; }
+    .hero-stat { display:flex; gap:28px; padding:17px 20px; border:1px solid var(--line); border-radius:13px; background:var(--night2); }
+    .hero-stat strong { display:block; font-size:20px; }.hero-stat span { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.09em; }
+    .toolbar { max-width:1500px; margin:0 auto 18px; display:flex; align-items:center; gap:10px; }
+    .filters { display:flex; gap:7px; overflow:auto; scrollbar-width:none; }
+    .filter { flex:none; border:1px solid var(--line); border-radius:999px; padding:8px 12px; background:transparent; color:var(--muted); font-size:11px; font-weight:700; }
+    .filter.active { border-color:var(--text); background:var(--text); color:var(--night); }
+    .search { margin-left:auto; width:230px; border:1px solid var(--line); border-radius:9px; padding:9px 12px; background:var(--night2); color:white; }
+    .search::placeholder { color:#687078; }
+    .board { max-width:1500px; margin:auto; display:grid; grid-template-columns:repeat(3,minmax(250px,1fr)); gap:14px; align-items:start; }
+    .column { min-width:0; border:1px solid var(--line); border-radius:16px; padding:12px; background:rgba(24,28,33,.72); }
+    .column-head { padding:6px 5px 14px; display:flex; align-items:center; gap:9px; color:#cbd0d3; font-size:12px; font-weight:760; }
+    .column-head i { width:8px; height:8px; border-radius:50%; background:var(--peach); }
+    .column:nth-child(2) .column-head i { background:var(--violet); }.column:nth-child(3) .column-head i { background:var(--green); }
+    .count { margin-left:auto; padding:2px 7px; border-radius:999px; background:#2a3036; color:#8f979e; font-size:10px; }
+    .cards { min-width:0; display:grid; grid-template-columns:minmax(0,1fr); gap:9px; }
+    .card { position:relative; min-width:0; width:100%; border:1px solid #363d45; border-radius:12px; padding:17px; background:var(--panel); color:var(--text); text-align:left; overflow:hidden; transition:transform .16s,border-color .16s; }
+    .card::before { content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--card-color,var(--cyan)); opacity:.75; }
+    .card:hover { transform:translateY(-2px); border-color:#555f69; }
+    .card-id { color:#737d85; font:9px ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .card h2 { margin:15px 0 8px; font-size:16px; line-height:1.25; letter-spacing:-.02em; }
+    .card p { margin:0; color:var(--muted); font-size:11px; line-height:1.55; }
+    .card-meta { display:flex; align-items:center; gap:7px; margin-top:17px; padding-top:13px; border-top:1px solid #30363d; }
+    .chip { padding:4px 7px; border-radius:5px; background:#2b3238; color:#b1b8bd; font-size:9px; font-weight:750; }
+    .chip.plan { background:color-mix(in srgb,var(--card-color) 15%,#20252b); color:var(--card-color); }
+    .files { margin-left:auto; color:#768088; font-size:9px; }
+    .add-card { width:100%; margin-top:9px; border:1px dashed #3b434a; border-radius:10px; padding:11px; background:transparent; color:#7f8990; font-size:11px; }
+    .add-card:hover { border-color:var(--cyan); color:var(--cyan); }
+    .drawer-backdrop { position:fixed; inset:0; z-index:40; display:none; background:rgba(5,7,9,.65); backdrop-filter:blur(4px); }
+    .drawer-backdrop.open { display:block; }
+    .drawer { position:absolute; right:0; top:0; width:min(610px,100%); height:100%; padding:32px; overflow:auto; border-left:1px solid var(--line); background:#171b20; box-shadow:-30px 0 80px rgba(0,0,0,.35); }
+    .drawer-top { display:flex; justify-content:space-between; align-items:center; }
+    .close { width:36px; height:36px; border:1px solid var(--line); border-radius:50%; background:var(--panel); color:white; }
+    .drawer h2 { margin:23px 0 9px; font-size:34px; line-height:1.05; letter-spacing:-.045em; }
+    .drawer-sub { margin:0; color:var(--muted); }
+    .status-row { display:flex; flex-wrap:wrap; gap:7px; margin:20px 0 27px; }
+    .status { padding:6px 9px; border-radius:6px; background:#242b31; color:#bac1c6; font-size:10px; }
+    .status.owner { background:#29323a; color:var(--cyan); }
+    .drawer-tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); }
+    .drawer-tab { border:0; border-bottom:2px solid transparent; padding:12px 11px; background:transparent; color:#8e979e; font-size:11px; font-weight:800; }
+    .drawer-tab.active { border-color:var(--cyan); color:white; }
+    .drawer-content { padding:25px 3px; }
+    .drawer-panel[hidden] { display:none; }
+    .block { margin-bottom:28px; }
+    .block h3 { margin:0 0 8px; color:#818b92; font-size:9px; text-transform:uppercase; letter-spacing:.15em; }
+    .block p,.block li { color:#d4d8da; line-height:1.7; }
+    .block ul { padding-left:19px; }
+    .plan-step { display:grid; grid-template-columns:25px 1fr; gap:11px; padding:13px 0; border-bottom:1px solid #2b3238; }
+    .check { width:20px; height:20px; border:1px solid #4c565f; border-radius:6px; display:grid; place-items:center; color:var(--green); font-size:10px; }
+    .file-row { display:flex; align-items:center; gap:12px; padding:13px; margin-bottom:7px; border:1px solid var(--line); border-radius:9px; color:#d3d7da; }
+    .file-row b { margin-left:auto; color:#7f8990; font-size:9px; }
+    .drawer-action { position:sticky; bottom:-32px; margin:20px -32px -32px; padding:17px 32px; border-top:1px solid var(--line); background:#171b20; display:flex; gap:9px; }
+    .drawer-action button { border-radius:8px; padding:10px 14px; font-weight:750; }
+    .edit { border:0; background:var(--cyan); color:#11211f; }.path { border:1px solid var(--line); background:transparent; color:white; }
+    .empty { display:none; grid-column:1/-1; padding:50px; border:1px dashed var(--line); border-radius:15px; color:var(--muted); text-align:center; }
+    @media(max-width:980px){.board{grid-template-columns:repeat(2,1fr)}.column:last-of-type{grid-column:1/-1}.head-nav{display:none}.head-nav.open{position:absolute;top:64px;right:16px;display:flex;flex-direction:column;align-items:stretch;min-width:175px;padding:9px;border:1px solid var(--line);border-radius:12px;background:var(--night2);box-shadow:0 20px 50px rgba(0,0,0,.35)}.mobile-nav{display:block}.hero-stat{display:none}}
+    @media(max-width:650px){header{height:65px;padding:0 16px}.project-switch{display:none}main{width:100%;min-width:0;padding:27px 15px 50px}.hero{min-width:0;grid-template-columns:minmax(0,1fr)}.toolbar{min-width:0;align-items:stretch;flex-direction:column}.filters{min-width:0;max-width:100%}.search{width:100%;margin:0}.board{width:100%;min-width:0;grid-template-columns:minmax(0,1fr)}.column{min-width:0;width:100%}.column:last-of-type{grid-column:auto}.drawer{padding:23px}.drawer-action{margin-left:-23px;margin-right:-23px;padding-left:23px;padding-right:23px}.brand span:last-child{display:none}}
+    @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <header><a class="brand" href="#"><span class="mark"></span><span>AILoveCode Workflow</span></a><span class="project-switch">ailovecode-workflow⌄</span><nav class="head-nav" id="headNav"><button class="active">Board</button><button>List</button><button>Guidelines</button><button class="create">+ New task</button></nav><button class="mobile-nav" id="mobileNav" aria-label="Open menu" aria-expanded="false">☰</button></header>
+  <main>
+    <section class="hero"><div><span class="eyebrow">Workflow portfolio</span><h1>See the work.<br>Move it forward.</h1><p>A visual command surface for every file-based task—from a rough human request to an implementation-ready plan.</p></div><div class="hero-stat"><div><strong>12</strong><span>Total tasks</span></div><div><strong>8</strong><span>Planned</span></div><div><strong>26</strong><span>Materials</span></div></div></section>
+    <div class="toolbar"><div class="filters" role="group" aria-label="Filter tasks"><button class="filter active" data-filter="all">All work</button><button class="filter" data-filter="design">Design</button><button class="filter" data-filter="feature">Features</button><button class="filter" data-filter="docs">Documentation</button></div><input class="search" id="search" type="search" placeholder="Search the board..."></div>
+
+    <section class="board" id="board">
+      <div class="column"><div class="column-head"><i></i>Needs a plan <span class="count">3</span></div><div class="cards">
+        <button class="card" style="--card-color:var(--peach)" data-type="feature" data-title="improve markdown renderer" data-card><span class="card-id">20260710T0912</span><h2>Improve Markdown renderer</h2><p>Support richer tables and clearer code blocks in task content.</p><div class="card-meta"><span class="chip">task.md</span><span class="chip">Needs plan</span><span class="files">1 file</span></div></button>
+        <button class="card" style="--card-color:var(--yellow)" data-type="docs" data-title="refresh workflow guidelines" data-card><span class="card-id">20260709T1450</span><h2>Refresh workflow guidelines</h2><p>Clarify task ownership, planning boundaries, and checkpoints.</p><div class="card-meta"><span class="chip">task.md</span><span class="chip">Needs plan</span><span class="files">2 files</span></div></button>
+      </div><button class="add-card">+ Add task</button></div>
+
+      <div class="column"><div class="column-head"><i></i>Ready to build <span class="count">4</span></div><div class="cards">
+        <button class="card" style="--card-color:var(--violet)" data-type="design" data-title="webui design codex interface html" data-card data-featured><span class="card-id">20260712T2335</span><h2>WebUI design — Codex</h2><p>Explore three polished interface directions as standalone HTML demos.</p><div class="card-meta"><span class="chip plan">Plan ready</span><span class="chip">Design</span><span class="files">3 files</span></div></button>
+        <button class="card" style="--card-color:var(--cyan)" data-type="feature" data-title="task creation supporting materials" data-card><span class="card-id">20260711T1718</span><h2>Task creation with materials</h2><p>Attach supporting files while capturing a new task request.</p><div class="card-meta"><span class="chip plan">Plan ready</span><span class="chip">Feature</span><span class="files">5 files</span></div></button>
+      </div><button class="add-card">+ Add task</button></div>
+
+      <div class="column"><div class="column-head"><i></i>In motion <span class="count">2</span></div><div class="cards">
+        <button class="card" style="--card-color:var(--green)" data-type="feature" data-title="search filter tasks" data-card><span class="card-id">20260708T1021</span><h2>Search and filter tasks</h2><p>Make large workflow folders faster to scan and navigate.</p><div class="card-meta"><span class="chip plan">2 / 3 milestones</span><span class="chip">Feature</span><span class="files">0 files</span></div></button>
+        <button class="card" style="--card-color:var(--green)" data-type="feature" data-title="safe materials paths" data-card><span class="card-id">20260707T0845</span><h2>Safe material paths</h2><p>Harden uploads and normalize supporting-material filenames.</p><div class="card-meta"><span class="chip plan">1 / 2 milestones</span><span class="chip">Feature</span><span class="files">4 files</span></div></button>
+      </div><button class="add-card">+ Add task</button></div>
+      <div class="empty" id="empty">No tasks match this view.</div>
+    </section>
+  </main>
+
+  <div class="drawer-backdrop" id="backdrop" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <aside class="drawer"><div class="drawer-top"><span class="card-id">20260712T2335_webui-design-codex</span><button class="close" data-close aria-label="Close detail">×</button></div><h2 id="drawerTitle">WebUI design — Codex</h2><p class="drawer-sub">Three UI directions for a clearer, more expressive workflow experience.</p><div class="status-row"><span class="status owner">● task.md · human-owned</span><span class="status">Plan ready</span><span class="status">3 materials</span></div>
+      <nav class="drawer-tabs"><button class="drawer-tab active" data-tab="overview">Overview</button><button class="drawer-tab" data-tab="plan">Plan</button><button class="drawer-tab" data-tab="materials">Materials</button></nav>
+      <div class="drawer-content">
+        <section class="drawer-panel" data-panel="overview"><div class="block"><h3>Context</h3><p>The current AILoveCode Workflow WebUI works, but needs a more deliberate interface and stronger user experience.</p></div><div class="block"><h3>Request</h3><ul><li>Create three distinct UI concepts.</li><li>Deliver each as a standalone HTML file.</li><li>Place prototypes under webui-design/codex.</li></ul></div><div class="block"><h3>Reference</h3><p style="color:var(--muted)">No references attached.</p></div></section>
+        <section class="drawer-panel" data-panel="plan" hidden><div class="block"><h3>Implementation steps</h3><div class="plan-step"><span class="check">✓</span><div><strong>Product mapping</strong><br><small>Review existing screens and constraints.</small></div></div><div class="plan-step"><span class="check">✓</span><div><strong>Standalone concepts</strong><br><small>Build responsive, interactive HTML demos.</small></div></div><div class="plan-step"><span class="check"></span><div><strong>Validation</strong><br><small>Verify structure, behavior, and accessibility.</small></div></div></div></section>
+        <section class="drawer-panel" data-panel="materials" hidden><div class="block"><h3>Supporting materials</h3><div class="file-row"><span>▧</span>current-dashboard.png <b>384 KB</b></div><div class="file-row"><span>▤</span>interface-notes.md <b>8 KB</b></div><div class="file-row"><span>▱</span>workflow-map.pdf <b>1.2 MB</b></div></div></section>
+      </div>
+      <div class="drawer-action"><button class="edit">Edit overview</button><button class="path">Copy folder path</button></div>
+    </aside>
+  </div>
+
+  <script>
+    const backdrop=document.querySelector('#backdrop'),cards=[...document.querySelectorAll('[data-card]')],filters=[...document.querySelectorAll('[data-filter]')],search=document.querySelector('#search');let filter='all';
+    function update(){const q=search.value.toLowerCase();let visible=0;cards.forEach(card=>{const show=(filter==='all'||card.dataset.type===filter)&&card.dataset.title.includes(q);card.hidden=!show;if(show)visible++});document.querySelector('#empty').style.display=visible?'none':'block'}
+    filters.forEach(btn=>btn.addEventListener('click',()=>{filters.forEach(b=>b.classList.toggle('active',b===btn));filter=btn.dataset.filter;update()}));search.addEventListener('input',update);
+    cards.forEach(card=>card.addEventListener('click',()=>{document.querySelector('#drawerTitle').textContent=card.querySelector('h2').textContent;backdrop.classList.add('open');setTimeout(()=>backdrop.querySelector('[data-close]').focus(),0)}));
+    document.querySelector('[data-featured]').addEventListener('click',()=>document.querySelector('#drawerTitle').textContent='WebUI design — Codex');
+    document.querySelector('[data-close]').addEventListener('click',()=>backdrop.classList.remove('open'));backdrop.addEventListener('click',e=>{if(e.target===backdrop)backdrop.classList.remove('open')});
+    document.querySelectorAll('[data-tab]').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(t=>t.classList.toggle('active',t===tab));document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==tab.dataset.tab)}));
+    const mobileNav=document.querySelector('#mobileNav'),headNav=document.querySelector('#headNav');mobileNav.addEventListener('click',()=>{const open=headNav.classList.toggle('open');mobileNav.setAttribute('aria-expanded',open)});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){backdrop.classList.remove('open');headNav.classList.remove('open');mobileNav.setAttribute('aria-expanded','false')}});
+  </script>
+</body>
+</html>

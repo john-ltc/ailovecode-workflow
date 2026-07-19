@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Command Center — AILoveCode Workflow</title>
+  <style>
+    :root { --ink:#18201d; --muted:#66706b; --paper:#f4f2eb; --card:#fffef9; --line:#dcded7; --green:#174f3a; --lime:#d9f870; --orange:#ef6b3b; --sidebar:#14251e; --shadow:0 18px 45px rgba(25,43,35,.08); }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; overflow-x:hidden; background:var(--paper); color:var(--ink); font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,input { font:inherit; }
+    button,a { -webkit-tap-highlight-color:transparent; }
+    button { cursor:pointer; }
+    a { color:inherit; text-decoration:none; }
+    :focus-visible { outline:3px solid #f0a45d; outline-offset:3px; }
+    .shell { min-height:100vh; display:grid; grid-template-columns:260px minmax(0,1fr); }
+    .sidebar { position:sticky; top:0; height:100vh; padding:28px 20px; background:var(--sidebar); color:#eff7f2; display:flex; flex-direction:column; z-index:20; }
+    .brand { display:flex; align-items:center; gap:11px; padding:0 8px 30px; font-weight:760; letter-spacing:-.02em; }
+    .brand-mark { width:34px; height:34px; border-radius:11px; display:grid; place-items:center; background:var(--lime); color:var(--sidebar); font-weight:900; box-shadow:inset 0 -3px 0 rgba(0,0,0,.12); }
+    .nav-label { margin:14px 10px 8px; color:#81988d; font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    .nav-item { width:100%; border:0; border-radius:11px; padding:11px 12px; background:transparent; color:#aec0b7; display:flex; align-items:center; gap:11px; text-align:left; }
+    .nav-item:hover,.nav-item.active { background:#243a30; color:white; }
+    .nav-item.active::after { content:""; margin-left:auto; width:7px; height:7px; border-radius:50%; background:var(--lime); }
+    .nav-icon { width:20px; text-align:center; font-size:16px; }
+    .side-project { margin-top:auto; padding:16px; border:1px solid #345044; border-radius:14px; background:#1a3027; }
+    .side-project small { color:#86a093; }
+    .side-project strong { display:block; margin:5px 0 12px; font-size:13px; }
+    .sync { display:flex; align-items:center; gap:7px; color:#acc1b6; font-size:12px; }
+    .sync-dot { width:8px; height:8px; border-radius:50%; background:var(--lime); box-shadow:0 0 0 4px rgba(217,248,112,.1); }
+    main { min-width:0; padding:24px 34px 50px; }
+    .topbar { display:flex; align-items:center; gap:18px; margin-bottom:35px; }
+    .mobile-menu { display:none; border:1px solid var(--line); background:var(--card); border-radius:10px; width:42px; height:42px; }
+    .search { position:relative; width:min(440px,48vw); }
+    .search input { width:100%; border:1px solid var(--line); border-radius:12px; padding:11px 80px 11px 39px; background:#faf9f4; color:var(--ink); }
+    .search::before { content:"⌕"; position:absolute; left:13px; top:6px; font-size:22px; color:var(--muted); }
+    .key { position:absolute; right:10px; top:8px; border:1px solid var(--line); border-bottom-width:2px; border-radius:6px; padding:2px 7px; color:#8a918d; font-size:11px; }
+    .top-actions { margin-left:auto; display:flex; align-items:center; gap:10px; }
+    .icon-btn { width:42px; height:42px; border:1px solid var(--line); border-radius:11px; background:var(--card); color:var(--ink); }
+    .primary { border:0; border-radius:11px; padding:11px 17px; background:var(--green); color:white; font-weight:760; box-shadow:0 7px 16px rgba(23,79,58,.18); }
+    .primary:hover { background:#0e3e2b; transform:translateY(-1px); }
+    .eyebrow { margin:0 0 7px; color:var(--green); font-size:11px; font-weight:850; letter-spacing:.14em; text-transform:uppercase; }
+    h1 { margin:0; font:700 clamp(30px,4vw,48px)/1.04 Georgia,serif; letter-spacing:-.035em; }
+    .intro { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:26px; }
+    .intro p:last-child { max-width:550px; margin:10px 0 0; color:var(--muted); font-size:15px; }
+    .date-chip { flex:none; border:1px solid var(--line); border-radius:999px; padding:8px 13px; background:var(--card); color:var(--muted); font-size:12px; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
+    .stat { min-height:125px; padding:19px; border:1px solid var(--line); border-radius:16px; background:var(--card); box-shadow:var(--shadow); }
+    .stat-top { display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
+    .stat strong { display:block; margin-top:13px; font-size:34px; letter-spacing:-.05em; }
+    .trend { color:var(--green); font-size:12px; font-weight:700; }
+    .ring { width:38px; height:38px; border-radius:50%; background:conic-gradient(var(--orange) 0 72%,#e4e6df 72%); display:grid; place-items:center; }
+    .ring::after { content:""; width:26px; height:26px; border-radius:50%; background:var(--card); }
+    .workspace { min-width:0; display:grid; grid-template-columns:minmax(0,1.65fr) minmax(280px,.85fr); gap:18px; align-items:start; }
+    .panel { min-width:0; border:1px solid var(--line); border-radius:17px; background:var(--card); box-shadow:var(--shadow); overflow:hidden; }
+    .panel-head { padding:18px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); }
+    .panel-head h2 { margin:0; font-size:16px; letter-spacing:-.015em; }
+    .panel-head a { color:var(--green); font-size:12px; font-weight:750; }
+    .task { display:grid; grid-template-columns:40px minmax(0,1fr) auto; gap:13px; align-items:center; padding:16px 20px; border-bottom:1px solid #e7e8e2; transition:.18s ease; }
+    .task:last-child { border:0; }
+    .task:hover { background:#f8f8f2; }
+    .task-index { width:35px; height:35px; border-radius:10px; display:grid; place-items:center; background:#edf0e9; color:#65706a; font:700 11px ui-monospace,monospace; }
+    .task:nth-child(2) .task-index { background:#e2f5ea; color:var(--green); }
+    .task h3 { margin:0; font-size:14px; }
+    .task p { margin:3px 0 0; color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .badges { display:flex; align-items:center; gap:8px; }
+    .badge { padding:5px 8px; border-radius:999px; background:#edf0e9; color:#5c6661; font-size:10px; font-weight:750; }
+    .badge.ready { background:#dff4e7; color:#206143; }
+    .arrow { color:#909792; }
+    .activity { padding:20px; }
+    .activity-intro { padding:16px; border-radius:13px; background:var(--green); color:white; }
+    .activity-intro small { color:#a9c6b8; }
+    .activity-intro strong { display:block; margin:3px 0 10px; font-size:16px; }
+    .progress { height:6px; border-radius:999px; background:#355f4d; overflow:hidden; }
+    .progress span { display:block; width:66%; height:100%; background:var(--lime); }
+    .timeline { margin-top:20px; }
+    .event { position:relative; display:grid; grid-template-columns:26px 1fr; gap:10px; padding-bottom:21px; }
+    .event:not(:last-child)::after { content:""; position:absolute; left:11px; top:23px; bottom:2px; width:1px; background:var(--line); }
+    .event-dot { width:23px; height:23px; border:1px solid var(--line); border-radius:50%; display:grid; place-items:center; background:#faf9f4; color:var(--green); font-size:10px; z-index:1; }
+    .event p { margin:0; color:#515a56; font-size:12px; }
+    .event time { color:#999f9c; font-size:10px; }
+    .modal-wrap { position:fixed; inset:0; display:none; place-items:center; padding:20px; background:rgba(9,22,16,.62); backdrop-filter:blur(5px); z-index:50; }
+    .modal-wrap.open { display:grid; }
+    .modal { width:min(520px,100%); border-radius:20px; padding:24px; background:var(--card); box-shadow:0 30px 80px rgba(0,0,0,.3); }
+    .modal h2 { margin:0; font:700 27px Georgia,serif; }
+    .modal label { display:block; margin-top:18px; font-size:12px; font-weight:750; }
+    .modal input { width:100%; margin-top:7px; border:1px solid var(--line); border-radius:10px; padding:12px; background:white; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+    .secondary { border:1px solid var(--line); border-radius:10px; padding:10px 14px; background:white; color:var(--ink); font-weight:700; }
+    .toast { position:fixed; right:24px; bottom:24px; padding:12px 16px; border-radius:11px; background:var(--ink); color:white; box-shadow:var(--shadow); opacity:0; transform:translateY(10px); pointer-events:none; transition:.2s; z-index:60; }
+    .toast.show { opacity:1; transform:none; }
+    @media (max-width:900px) { .shell{grid-template-columns:1fr}.sidebar{position:fixed;left:0;transform:translateX(-100%);transition:.2s;width:260px}.sidebar.open{transform:none}.mobile-menu{display:block}.workspace{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}main{padding:20px}.search{width:min(360px,100%)} }
+    @media (max-width:620px) { .topbar{min-width:0;gap:8px;margin-bottom:25px}.search{min-width:0;width:auto;flex:1}.search .key{display:none}.search input{min-width:0;padding-right:12px}.top-actions{flex:none}.top-actions .icon-btn{display:none}.primary span{display:none}.primary::after{content:"+ Task"}.intro{min-width:0;align-items:flex-start;flex-direction:column}.intro>div{min-width:0}.date-chip{display:none}.stats{min-width:0;grid-template-columns:repeat(2,minmax(0,1fr))}.stat{min-width:0}.stat:first-child{grid-column:1/-1}.stat{min-height:105px}.workspace{grid-template-columns:minmax(0,1fr);gap:14px}.panel-head>*{min-width:0}.task{min-width:0;grid-template-columns:38px minmax(0,1fr);padding:14px}.task .badges{grid-column:2}.badge:not(.ready){display:none} }
+    @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#"><span class="brand-mark">A</span><span>AILoveCode<br>Workflow</span></a>
+      <div class="nav-label">Workspace</div>
+      <button class="nav-item active"><span class="nav-icon">⌂</span>Command center</button>
+      <button class="nav-item"><span class="nav-icon">✓</span>All tasks</button>
+      <button class="nav-item"><span class="nav-icon">＋</span>Create task</button>
+      <div class="nav-label">Knowledge</div>
+      <button class="nav-item"><span class="nav-icon">◇</span>Guidelines</button>
+      <button class="nav-item"><span class="nav-icon">↗</span>Supporting files</button>
+      <div class="side-project">
+        <small>Active workspace</small>
+        <strong>ailovecode-workflow</strong>
+        <div class="sync"><span class="sync-dot"></span>Local files in sync</div>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <button class="mobile-menu" id="menu" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+        <label class="search"><span class="sr-only"></span><input id="taskSearch" type="search" placeholder="Search tasks, files, or commands"><span class="key">⌘ K</span></label>
+        <div class="top-actions"><button class="icon-btn" aria-label="Notifications">◌</button><button class="primary" data-open-modal><span>Create task</span></button></div>
+      </header>
+
+      <section class="intro">
+        <div><p class="eyebrow">Local workflow overview</p><h1>Good evening, builder.</h1><p>Everything important is in view. Pick up a task, review the plan, or create the next piece of work.</p></div>
+        <span class="date-chip">Sunday · 12 July 2026</span>
+      </section>
+
+      <section class="stats" aria-label="Workflow statistics">
+        <article class="stat"><div class="stat-top"><span>All tasks</span><span class="trend">+2 this week</span></div><strong>12</strong><span class="trend">Healthy momentum</span></article>
+        <article class="stat"><div class="stat-top"><span>Plans ready</span><span class="ring" aria-label="72 percent"></span></div><strong>8</strong><span class="trend">4 need planning</span></article>
+        <article class="stat"><div class="stat-top"><span>Supporting files</span><span>↗</span></div><strong>26</strong><span class="trend">Across 7 tasks</span></article>
+      </section>
+
+      <section class="workspace">
+        <div class="panel">
+          <div class="panel-head"><h2>Continue working</h2><a href="#">View all tasks →</a></div>
+          <div id="taskList">
+            <a class="task" href="#" data-search="webui design codex user interface html"><span class="task-index">01</span><div><h3>WebUI design — Codex</h3><p>Three standalone concepts for the workflow interface</p></div><div class="badges"><span class="badge ready">Plan ready</span><span class="badge">3 files</span><span class="arrow">→</span></div></a>
+            <a class="task" href="#" data-search="task creation supporting materials upload"><span class="task-index">02</span><div><h3>Task creation with materials</h3><p>Add upload support to the new task flow</p></div><div class="badges"><span class="badge ready">In progress</span><span class="badge">5 files</span><span class="arrow">→</span></div></a>
+            <a class="task" href="#" data-search="search filter workflow tasks"><span class="task-index">03</span><div><h3>Search and filter tasks</h3><p>Make larger workspaces easier to navigate</p></div><div class="badges"><span class="badge ready">Plan ready</span><span class="badge">0 files</span><span class="arrow">→</span></div></a>
+            <a class="task" href="#" data-search="documentation guidelines refresh"><span class="task-index">04</span><div><h3>Refresh workflow guidelines</h3><p>Clarify the planning and checkpoint boundaries</p></div><div class="badges"><span class="badge">Needs plan</span><span class="badge">1 file</span><span class="arrow">→</span></div></a>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <div class="panel-head"><h2>Workspace pulse</h2><a href="#">This week</a></div>
+          <div class="activity">
+            <div class="activity-intro"><small>Current milestone</small><strong>WebUI foundations</strong><div class="progress"><span></span></div></div>
+            <div class="timeline">
+              <div class="event"><span class="event-dot">✓</span><div><p><strong>Plan updated</strong> in WebUI design</p><time>8 minutes ago</time></div></div>
+              <div class="event"><span class="event-dot">＋</span><div><p><strong>3 materials</strong> added to Task creation</p><time>Yesterday at 18:42</time></div></div>
+              <div class="event"><span class="event-dot">↗</span><div><p><strong>Task created</strong> Search and filter</p><time>Friday at 09:16</time></div></div>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-wrap" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <form class="modal" id="newTaskForm"><p class="eyebrow">Start something clear</p><h2 id="modal-title">Create a new task</h2><label>Task name<input name="task" required placeholder="e.g. improve task detail view"></label><label>Request<input name="request" placeholder="What should be achieved?"></label><div class="modal-actions"><button class="secondary" type="button" data-close-modal>Cancel</button><button class="primary" type="submit">Create draft</button></div></form>
+  </div>
+  <div class="toast" id="toast" role="status">Demo task created locally</div>
+
+  <script>
+    const sidebar=document.querySelector('#sidebar'),menu=document.querySelector('#menu'),modal=document.querySelector('#modal'),toast=document.querySelector('#toast');
+    menu.addEventListener('click',()=>{const open=sidebar.classList.toggle('open');menu.setAttribute('aria-expanded',open)});
+    document.querySelectorAll('[data-open-modal]').forEach(el=>el.addEventListener('click',()=>{modal.classList.add('open');setTimeout(()=>modal.querySelector('input').focus(),0)}));
+    document.querySelector('[data-close-modal]').addEventListener('click',()=>modal.classList.remove('open'));
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open')});
+    document.querySelector('#newTaskForm').addEventListener('submit',e=>{e.preventDefault();modal.classList.remove('open');e.target.reset();toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2200)});
+    document.querySelector('#taskSearch').addEventListener('input',e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('[data-search]').forEach(row=>row.hidden=!row.dataset.search.includes(q))});
+    document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.querySelector('#taskSearch').focus()}if(e.key==='Escape'){modal.classList.remove('open');sidebar.classList.remove('open')}});
+  </script>
+</body>
+</html>

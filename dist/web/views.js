@@ -255,66 +255,135 @@ function renderTaskNew(options = {}) {
 
       ${formError(options.error)}
 
-      ${card(`<form method="post" action="/tasks/new" class="space-y-6">
+      ${card(`<form method="post" action="/tasks/new" class="space-y-6" enctype="multipart/form-data">
         ${taskNameInput(values.taskName)}
         ${sectionTextarea("Context", values.Context)}
         ${sectionTextarea("Request", values.Request)}
+        ${taskCreateMaterialsInput()}
         ${sectionTextarea("Reference", values.Reference)}
         <div class="flex gap-3">
           <button class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800" type="submit">Create task</button>
           <a class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/tasks">Cancel</a>
         </div>
       </form>`)}
+      ${taskCreateMaterialsScript()}
     </div>`);
 }
+function taskDetailTabHref(task, tab) {
+    const taskUrl = `/tasks/${encodeURIComponent(task.id)}`;
+    return tab === "overview" ? taskUrl : `${taskUrl}?tab=${tab}`;
+}
+function renderTaskDetailTabs(task, activeTab) {
+    const tabs = [
+        { id: "overview", label: "Overview" },
+        { id: "plan", label: "Implementation Plan" },
+        { id: "materials", label: "Supporting Materials" },
+    ];
+    return `<nav class="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Task detail tabs">
+    ${tabs
+        .map((tab) => {
+        const isActive = tab.id === activeTab;
+        const classes = isActive
+            ? "bg-blue-700 text-white shadow-sm"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-950";
+        return `<a class="rounded-lg px-4 py-2 text-sm font-semibold ${classes}" href="${taskDetailTabHref(task, tab.id)}">${escapeHtml(tab.label)}</a>`;
+    })
+        .join("")}
+  </nav>`;
+}
+function renderTaskDetailTabContent(options) {
+    const { task, sections, editableSections, implementationPlanHtml, materials, activeTab, editingOverview } = options;
+    if (activeTab === "plan") {
+        return card(`<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><h2 class="text-xl font-semibold text-slate-950">Implementation Plan</h2><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">Read only · AI-owned</span></div><div class="mt-4">${markdownBlock(implementationPlanHtml)}</div>`);
+    }
+    if (activeTab === "materials") {
+        return renderMaterialsCard(task, materials);
+    }
+    if (editingOverview) {
+        return card(`<div class="mb-6 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"><div><h2 class="text-xl font-semibold text-slate-950">Edit Overview</h2><p class="mt-1 text-sm text-slate-500">Updates Context, Request, and Reference in task.md.</p></div></div><form method="post" action="/tasks/${encodeURIComponent(task.id)}/edit" class="space-y-6">
+      ${sectionTextarea("Context", editableSections.Context)}
+      ${sectionTextarea("Request", editableSections.Request)}
+      ${sectionTextarea("Reference", editableSections.Reference)}
+      <div class="flex gap-3">
+        <button class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800" type="submit">Save overview</button>
+        <a class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/tasks/${encodeURIComponent(task.id)}">Cancel</a>
+      </div>
+    </form>`);
+    }
+    return `<div class="space-y-6">
+    ${card(`<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 class="text-xl font-semibold text-slate-950">Overview</h2><p class="mt-1 text-sm text-slate-500">Context, Request, and Reference from task.md.</p></div><a class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800" href="/tasks/${encodeURIComponent(task.id)}?edit=1">Edit Overview</a></div>`)}
+    ${card(`<h2 class="text-xl font-semibold text-slate-950">Context</h2><div class="mt-4">${markdownBlock(sections.Context)}</div>`)}
+    ${card(`<h2 class="text-xl font-semibold text-slate-950">Request</h2><div class="mt-4">${markdownBlock(sections.Request)}</div>`)}
+    ${card(`<h2 class="text-xl font-semibold text-slate-950">Reference</h2><div class="mt-4">${markdownBlock(sections.Reference)}</div>`)}
+  </div>`;
+}
 function renderTaskDetail(options) {
-    const { task, sections, implementationPlanHtml, materials, saved } = options;
+    const { task, saved, activeTab, editingOverview } = options;
     return pageLayout(task.name, `<div class="space-y-6">
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <a class="text-sm font-medium text-blue-700 hover:text-blue-900" href="/tasks">← Back to tasks</a>
           <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-950">${escapeHtml(task.name)}</h1>
           <p class="mt-1 font-mono text-sm text-slate-500">${escapeHtml(task.id)}</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">task.md editable</span>
+            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">implementation-plan.md read only</span>
+            <span class="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-medium text-purple-800">materials: ${task.supportingMaterialCount}</span>
+          </div>
         </div>
-        <a class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800" href="/tasks/${encodeURIComponent(task.id)}/edit">Edit task.md sections</a>
       </div>
 
       ${saved ? `<div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">task.md sections saved.</div>` : ""}
+      ${editingOverview ? `<div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">Editing Overview inline. Save or cancel to return to the read-only view.</div>` : ""}
 
-      <div class="grid gap-6 lg:grid-cols-[260px_1fr]">
-        <aside class="space-y-3">
-          ${card(`<h2 class="text-base font-semibold text-slate-950">Task Files</h2><ul class="mt-3 space-y-2 text-sm text-slate-700"><li>task.md <span class="ml-1 rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800">Editable</span></li><li>implementation-plan.md <span class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">Read only</span></li></ul>`)}
-          ${renderMaterialsCard(task, materials)}
-        </aside>
-
-        <div class="space-y-6">
-          ${card(`<h2 class="text-xl font-semibold text-slate-950">Context</h2><div class="mt-4">${markdownBlock(sections.Context)}</div>`)}
-          ${card(`<h2 class="text-xl font-semibold text-slate-950">Request</h2><div class="mt-4">${markdownBlock(sections.Request)}</div>`)}
-          ${card(`<h2 class="text-xl font-semibold text-slate-950">Reference</h2><div class="mt-4">${markdownBlock(sections.Reference)}</div>`)}
-          ${card(`<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><h2 class="text-xl font-semibold text-slate-950">Implementation Plan</h2><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">Read only · AI-owned</span></div><div class="mt-4">${markdownBlock(implementationPlanHtml)}</div>`)}
-        </div>
-      </div>
+      ${renderTaskDetailTabs(task, activeTab)}
+      ${renderTaskDetailTabContent(options)}
     </div>`);
 }
 function renderMaterialsCard(task, materials) {
-    if (materials.length === 0) {
-        return card(`<h2 class="text-base font-semibold text-slate-950">Supporting Materials</h2><div class="mt-3">${emptyState("No supporting materials found.")}</div>`);
-    }
-    return card(`<h2 class="text-base font-semibold text-slate-950">Supporting Materials</h2><ul class="mt-3 space-y-3 text-sm">
-    ${materials
-        .map((material) => {
-        const materialUrl = `/tasks/${encodeURIComponent(task.id)}/materials/${encodePathSegments(material.relativePath)}`;
-        return `<li class="rounded-lg border border-slate-200 p-3">
-          <div class="break-all font-medium text-slate-900">${escapeHtml(material.relativePath)}</div>
-          <div class="mt-1 text-xs text-slate-500">${(0, tasks_1.formatBytes)(material.size)}</div>
-          <div class="mt-2 flex gap-3 text-xs font-semibold">
-            <a class="text-blue-700 hover:text-blue-900" href="${materialUrl}" target="_blank" rel="noreferrer">Open</a>
-            <a class="text-blue-700 hover:text-blue-900" href="${materialUrl}?download=1">Download</a>
-          </div>
-        </li>`;
-    })
-        .join("")}
-  </ul>`);
+    const materialsList = materials.length === 0
+        ? `<div class="mt-3">${emptyState("No supporting materials found.")}</div>`
+        : `<ul class="mt-3 space-y-3 text-sm">
+          ${materials.map((material) => renderMaterialListItem(task, material)).join("")}
+        </ul>`;
+    return card(`<div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-950">Supporting Materials</h2>
+        <p class="mt-1 text-sm text-slate-500">Files are stored in this task's supporting-materials folder.</p>
+      </div>
+    </div>
+    ${materialsList}
+    ${renderMaterialsUploadForm(task)}`);
+}
+function renderMaterialsUploadForm(task) {
+    return `<form class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4" method="post" action="/tasks/${encodeURIComponent(task.id)}/materials" enctype="multipart/form-data">
+    <label class="block">
+      <span class="text-sm font-semibold text-slate-800">Add supporting materials</span>
+      <input class="mt-2 block w-full text-sm text-slate-700" name="materials" type="file" multiple>
+      <span class="mt-2 block text-xs text-slate-500">Use uploaded file paths in Reference when needed.</span>
+    </label>
+    <button class="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-800" type="submit">Upload</button>
+  </form>`;
+}
+function renderMaterialListItem(task, material) {
+    const materialUrl = `/tasks/${encodeURIComponent(task.id)}/materials/${encodePathSegments(material.relativePath)}`;
+    return `<li class="rounded-lg border border-slate-200 p-4">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div class="min-w-0">
+        <div class="break-all font-medium text-slate-900">${escapeHtml(material.name)}</div>
+        <div class="mt-1 text-xs text-slate-500">${(0, tasks_1.formatBytes)(material.size)}</div>
+        <div class="mt-3 break-all rounded bg-slate-50 px-3 py-2 font-mono text-xs text-slate-700">supporting-materials/${escapeHtml(material.relativePath)}</div>
+      </div>
+      <div class="flex shrink-0 flex-wrap items-center gap-3 text-xs font-semibold">
+        <a class="text-blue-700 hover:text-blue-900" href="${materialUrl}" target="_blank" rel="noreferrer">Open</a>
+        <a class="text-blue-700 hover:text-blue-900" href="${materialUrl}?download=1">Download</a>
+        <form method="post" action="/tasks/${encodeURIComponent(task.id)}/materials/delete">
+          <input name="relativePath" type="hidden" value="${escapeHtml(material.relativePath)}">
+          <button class="font-semibold text-red-700 hover:text-red-900" type="submit">Remove</button>
+        </form>
+      </div>
+    </div>
+  </li>`;
 }
 function renderTaskEdit(options) {
     const { task, sections } = options;
@@ -335,6 +404,83 @@ function renderTaskEdit(options) {
         </div>
       </form>`)}
     </div>`);
+}
+function taskCreateMaterialsInput() {
+    return `<div class="block rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <label class="block">
+      <span class="text-sm font-semibold text-slate-800">Supporting materials</span>
+      <input class="mt-2 block w-full text-sm text-slate-700" data-task-create-materials-input name="materials" type="file" multiple>
+      <span class="mt-2 block text-xs text-slate-500">Optional. Select files before writing Reference so you can copy their generated paths.</span>
+    </label>
+    <div class="mt-3 hidden rounded-lg border border-slate-200 bg-white p-3" data-task-create-materials-preview>
+      <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Reference paths</div>
+      <ul class="mt-2 space-y-1 text-xs text-slate-700" data-task-create-materials-list></ul>
+      <p class="mt-2 text-xs text-slate-500">Copy these paths into Reference as needed.</p>
+    </div>
+  </div>`;
+}
+function taskCreateMaterialsScript() {
+    return String.raw `<script>
+(() => {
+  const input = document.querySelector('[data-task-create-materials-input]');
+  const preview = document.querySelector('[data-task-create-materials-preview]');
+  const list = document.querySelector('[data-task-create-materials-list]');
+
+  if (!input || !preview || !list) return;
+
+  function sanitizeFileName(fileName) {
+    const baseName = String(fileName || '').split(/[\\/]/).pop() || '';
+    const sanitizedName = baseName
+      .replace(/[\x00-\x1f\x80-\x9f]/g, '')
+      .replace(/[<>:"\/\\|?*]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .replace(/^-+|-+$/g, '')
+      .replace(/^\.+/, '')
+      .trim();
+
+    return sanitizedName || 'material';
+  }
+
+  function extensionOf(fileName) {
+    const lastDot = fileName.lastIndexOf('.');
+    return lastDot > 0 ? fileName.slice(lastDot) : '';
+  }
+
+  function uniqueFileName(fileName, usedNames) {
+    const extension = extensionOf(fileName);
+    const name = fileName.slice(0, fileName.length - extension.length) || 'material';
+    let candidateName = fileName;
+    let index = 1;
+
+    while (usedNames.has(candidateName.toLowerCase())) {
+      candidateName = name + '-' + index + extension;
+      index += 1;
+    }
+
+    usedNames.add(candidateName.toLowerCase());
+    return candidateName;
+  }
+
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files || []);
+    const usedNames = new Set();
+
+    list.innerHTML = '';
+    preview.classList.toggle('hidden', files.length === 0);
+
+    files.forEach((file) => {
+      const materialPath = 'supporting-materials/' + uniqueFileName(sanitizeFileName(file.name), usedNames);
+      const item = document.createElement('li');
+      const code = document.createElement('code');
+
+      code.className = 'rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-900';
+      code.textContent = materialPath;
+      item.appendChild(code);
+      list.appendChild(item);
+    });
+  });
+})();
+</script>`;
 }
 function taskNameInput(value) {
     return `<label class="block">

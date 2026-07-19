@@ -1,14 +1,17 @@
 import express, { NextFunction, Request, Response } from "express";
+import multer from "multer";
 import path from "path";
 import { ensureWorkflowExists } from "../workflow/paths";
 import { renderMarkdown } from "../workflow/markdown";
 import {
+  addSupportingMaterialFile,
   createWorkflowTask,
   listSupportingMaterials,
   listTasks,
   readGuidelines,
   readImplementationPlan,
   readTaskSections,
+  removeSupportingMaterial,
   resolveSupportingMaterialPath,
   saveTaskSections,
   TaskSummary,
@@ -21,10 +24,15 @@ import {
   renderTaskEdit,
   renderTaskList,
   renderTaskNew,
+  TaskDetailTab,
 } from "./views";
 
 export interface StartWebServerOptions {
   port: number;
+}
+
+function parseTaskDetailTab(value: unknown): TaskDetailTab {
+  return value === "plan" || value === "materials" ? value : "overview";
 }
 
 function getTaskSummary(workflowPath: string, taskId: string): TaskSummary {
@@ -39,6 +47,7 @@ function getTaskSummary(workflowPath: string, taskId: string): TaskSummary {
 
 function createApp(workflowPath: string): express.Express {
   const app = express();
+  const upload = multer({ storage: multer.memoryStorage() });
 
   app.use(express.urlencoded({ extended: false }));
   app.use("/assets", express.static(path.join(__dirname, "public")));
@@ -66,7 +75,7 @@ function createApp(workflowPath: string): express.Express {
     res.send(renderTaskNew());
   });
 
-  app.post("/tasks/new", (req, res) => {
+  app.post("/tasks/new", upload.array("materials"), (req, res) => {
     const values = {
       taskName: typeof req.body.taskName === "string" ? req.body.taskName : "",
       Context: typeof req.body.Context === "string" ? req.body.Context : "",
@@ -83,6 +92,11 @@ function createApp(workflowPath: string): express.Express {
           Reference: values.Reference,
         },
       });
+      const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
+
+      for (const file of files) {
+        addSupportingMaterialFile(workflowPath, createdTask.id, file.originalname, file.buffer);
+      }
 
       res.redirect(`/tasks/${encodeURIComponent(createdTask.id)}`);
     } catch (error) {
@@ -97,6 +111,7 @@ function createApp(workflowPath: string): express.Express {
       const sections = readTaskSections(workflowPath, task.id);
       const implementationPlan = readImplementationPlan(workflowPath, task.id);
       const materials = listSupportingMaterials(workflowPath, task.id);
+      const activeTab = parseTaskDetailTab(req.query.tab);
 
       res.send(
         renderTaskDetail({
@@ -106,9 +121,12 @@ function createApp(workflowPath: string): express.Express {
             Request: renderMarkdown(sections.Request),
             Reference: renderMarkdown(sections.Reference),
           },
+          editableSections: sections,
           implementationPlanHtml: renderMarkdown(implementationPlan),
           materials,
           saved: req.query.saved === "1",
+          activeTab,
+          editingOverview: activeTab === "overview" && req.query.edit === "1",
         }),
       );
     } catch (error) {
@@ -138,6 +156,34 @@ function createApp(workflowPath: string): express.Express {
       });
 
       res.redirect(`/tasks/${encodeURIComponent(task.id)}?saved=1`);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/tasks/:taskId/materials", upload.array("materials"), (req, res, next) => {
+    try {
+      const task = getTaskSummary(workflowPath, req.params.taskId);
+      const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
+
+      for (const file of files) {
+        addSupportingMaterialFile(workflowPath, task.id, file.originalname, file.buffer);
+      }
+
+      res.redirect(`/tasks/${encodeURIComponent(task.id)}?tab=materials`);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/tasks/:taskId/materials/delete", (req, res, next) => {
+    try {
+      const task = getTaskSummary(workflowPath, req.params.taskId);
+      const relativePath = typeof req.body.relativePath === "string" ? req.body.relativePath : "";
+
+      removeSupportingMaterial(workflowPath, task.id, relativePath);
+
+      res.redirect(`/tasks/${encodeURIComponent(task.id)}?tab=materials`);
     } catch (error) {
       next(error);
     }
