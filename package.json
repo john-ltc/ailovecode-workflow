@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "bin": {
     "ailovecode-workflow": "./bin/ailovecode-workflow.js"
+  },
+  "scripts": {
+    "test": "node --test"
   }
 }

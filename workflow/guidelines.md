@@ -269,6 +269,20 @@ Examples:
 3. If the feature reaches a meaningful runnable or testable state before completion, create a Development Checkpoint
 4. Continue implementation after user feedback or approval
 
+### AI Code Review Phase
+
+1. Determine the PR base branch
+2. Collect the `<base>...HEAD` diff and changed-file status
+3. Discover every task and implementation plan associated with the branch
+4. Review each task independently for task alignment, plan alignment, and engineering quality
+5. Perform a final PR-level review
+6. Return standardized findings and an overall verdict
+7. Keep human review as the final approval before merge
+
+AI Code Review is read-only for implementation artifacts. It may create or update only the standardized AI-owned review report under `workflow/reviews/`. A request to review code does not authorize modifying code, task files, plans, commits, branches, pull requests, or merge state. Fixes should only be implemented when the user separately requests them.
+
+The review workflow applies whether the implementation was written manually or with any AI or development tool.
+
 ---
 
 ## Task Understanding Response
@@ -320,6 +334,241 @@ During the discussion phase, the AI may:
 * review additional requirements provided by the user
 
 However, the AI should not create or modify `implementation-plan.md` until planning is explicitly requested.
+
+---
+
+## AI Code Review
+
+### Review Trigger
+
+When the user asks to review a PR, branch, or implementation, AI should perform the AI Code Review phase. When the official context command is available, follow the Command-First Policy:
+
+```bash
+npx ailovecode-workflow review-context <base>
+```
+
+The base may be omitted when it can be detected safely:
+
+```bash
+npx ailovecode-workflow review-context
+```
+
+The context command collects review inputs and prints the standardized review-report path. It does not perform the review, write the report, or determine the verdict.
+
+### Base Branch
+
+The base is the branch that the reviewed branch is intended to merge into.
+
+Select it in this order:
+
+1. A base explicitly provided by the user
+2. Base-branch metadata from the pull request
+3. The remote default branch
+4. An existing `main` branch
+5. An existing `master` branch
+6. Ask the user when the base remains ambiguous
+
+Use the merge-base comparison `<base>...HEAD`. Do not silently use a base that cannot be resolved.
+
+### Review Inputs
+
+Collect:
+
+* changed-file name and status from `<base>...HEAD`
+* the complete `<base>...HEAD` code diff
+* each `task.md` or `implementation-plan.md` introduced, modified, renamed, or deleted by the branch
+* the matching task/plan document in the same task directory when only one of the pair changed
+* relevant repository and code context needed to validate the changes
+
+Do not assume that a single PR contains only one task.
+
+Exclude `workflow/reviews/**` from changed-file discovery and the complete branch diff. Generated review reports are outputs of the review process and must not affect later findings or verdicts.
+
+### Task Discovery
+
+Use changed files as the primary discovery mechanism. A task directory is implicated when its `task.md` or `implementation-plan.md` changed.
+
+For every implicated directory:
+
+1. Read `task.md` when it exists
+2. Read `implementation-plan.md` when it exists
+3. Keep the pair independent from other task directories
+4. Report missing or deleted documents explicitly
+
+If no task directory is discovered:
+
+1. Look for task references in PR metadata, the branch name, commit messages, and repository context
+2. Read the referenced task and plan when found
+3. Ask the user which task the PR implements if discovery still fails
+
+Do not introduce or require an additional task manifest solely for review discovery.
+
+### Source of Truth
+
+Use this authority order:
+
+```text
+task.md
+  -> highest authority: required outcome
+implementation-plan.md
+  -> intended implementation approach
+actual code
+  -> implementation being reviewed
+```
+
+Rules:
+
+* Code that contradicts or fails an important requirement in `task.md` is a functional problem.
+* A deviation from `implementation-plan.md` is not automatically a defect.
+* Report a meaningful plan deviation and assess whether it is justified.
+* Recommend updating the plan when the implementation is valid but the plan no longer describes it.
+* Do not treat an outdated plan as having higher authority than a satisfied task requirement.
+
+### Review Dimensions
+
+Review each discovered task independently across three dimensions.
+
+#### Task Alignment
+
+Check whether the implementation:
+
+* achieves the requested outcome
+* implements important requirements and acceptance conditions
+* avoids behavior that contradicts the task
+* avoids unrelated or out-of-scope changes
+
+#### Plan Alignment
+
+Check whether the implementation:
+
+* follows the intended architecture and implementation steps
+* includes expected code, database, API, configuration, and test changes
+* explains or reasonably justifies meaningful deviations
+* leaves the plan accurate enough to remain useful
+
+#### Engineering Review
+
+Review for actionable technical problems, including:
+
+* incorrect logic and edge cases
+* security, authentication, authorization, and input validation
+* error handling and failure behavior
+* transactions, data consistency, and concurrency
+* API and backward compatibility
+* performance and resource usage
+* consistency with repository architecture and conventions
+* missing or insufficient tests
+* unnecessary complexity or unrelated changes
+
+Review the complete diff; do not limit engineering review to files that can be assigned to a specific task.
+
+### Multiple Tasks and PR-Level Review
+
+For a PR with multiple task directories:
+
+1. Report task alignment, plan alignment, and engineering findings for each task separately
+2. Do not merge all task requirements into one checklist
+3. Then perform a PR-level review for cross-task conflicts, duplicated work, unrelated changes, and excessive PR scope
+
+When the relationship between a code change and a task is unclear, report that uncertainty rather than inventing an association.
+
+### Finding Format
+
+Report only actionable findings. Each finding should include:
+
+* severity
+* concise title
+* affected file and line when available
+* explanation of the concrete impact
+* the task or plan requirement involved, when applicable
+* a practical remediation direction
+
+Use these severities:
+
+* **Critical** - severe security, data-loss, or production risk; must not merge
+* **High** - significant functional, security, or compatibility problem; should be fixed before merge
+* **Medium** - important missing case, test gap, maintainability issue, or task-alignment problem
+* **Low** - minor, non-blocking improvement with concrete value
+
+Do not inflate severity for stylistic preferences. Do not report praise, summaries, or general observations as findings.
+
+### Dimension Status and Overall Verdict
+
+Use `PASS`, `WARNING`, or `CHANGES REQUESTED` for each review dimension and for the overall verdict.
+
+Apply these rules:
+
+* Any Critical or High finding results in `CHANGES REQUESTED`.
+* A Medium finding that proves an important task requirement is missing or incorrect results in `CHANGES REQUESTED`.
+* Other Medium findings result in at least `WARNING`.
+* Low findings result in at least `WARNING`.
+* No actionable findings results in `PASS`.
+* Unresolved task discovery or insufficient context results in `WARNING`, with the limitation stated clearly.
+
+The overall verdict is the most severe applicable status across every task and the PR-level review. The AI verdict informs human review and never replaces human approval.
+
+### Review Report
+
+After completing the review, create or update the report path printed by `review-context`:
+
+```text
+workflow/reviews/<branch-slug>.md
+```
+
+Rules:
+
+* Convert the full branch name to lowercase kebab-case; for example, `feature/add-code-review` becomes `feature-add-code-review`.
+* For detached HEAD, use `detached-<12-character-commit>.md`.
+* Create `workflow/reviews/` when it does not exist.
+* Write the same standardized review shown to the user into the report.
+* Include the base, head branch, reviewed commit, review timestamp, and discovered task paths in report metadata.
+* On rerun, replace the existing branch report so it represents the current reviewed commit; do not append another review to the same file.
+* Treat the report as AI-owned generated output. Do not place it inside an individual task directory because one PR may implement multiple tasks.
+* Do not modify any other file as part of review.
+* Do not commit, push, post, approve, or merge the report unless the user separately requests that action.
+* If the user explicitly requests no file write, return the review without creating or updating the report.
+
+The report write does not change the review verdict. If the report cannot be written, return the full review to the user and state the persistence error separately.
+
+### Standard Review Output
+
+Use this structure:
+
+```md
+# AI Love Code - PR Review
+
+## Metadata
+
+- Base: <base>
+- Head: <branch>
+- Commit: <full commit hash>
+- Reviewed at: <ISO 8601 timestamp>
+- Tasks:
+  - <task path>
+
+## Task 1 - <task name>
+
+Task Alignment: PASS | WARNING | CHANGES REQUESTED
+Plan Alignment: PASS | WARNING | CHANGES REQUESTED
+Engineering: PASS | WARNING | CHANGES REQUESTED
+
+### Findings
+
+- HIGH - Finding title (`path/to/file:line`)
+  Concrete impact and remediation direction.
+
+## PR-Level Review
+
+- Cross-task conflicts: none found
+- Unrelated changes: none found
+- Scope: appropriate
+
+## Overall Verdict
+
+PASS | WARNING | CHANGES REQUESTED
+```
+
+Omit an empty task finding list or write `No actionable findings.` State discovery or context limitations before the overall verdict.
 
 ---
 

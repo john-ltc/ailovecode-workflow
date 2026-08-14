@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
 
 const command = process.argv[2];
 
@@ -86,6 +87,17 @@ function updateInstructionFiles() {
   ensureWorkflowTag("CLAUDE.md");
 }
 
+function ensureWorkflowDirectories() {
+  fs.mkdirSync(
+    path.join(targetWorkflow, "tasks"),
+    { recursive: true }
+  );
+  fs.mkdirSync(
+    path.join(targetWorkflow, "reviews"),
+    { recursive: true }
+  );
+}
+
 function init() {
   if (fs.existsSync(targetWorkflow)) {
     console.log(
@@ -102,12 +114,7 @@ function init() {
 
   copyDir(sourceWorkflow, targetWorkflow);
 
-  fs.mkdirSync(
-    path.join(targetWorkflow, "tasks"),
-    {
-      recursive: true,
-    }
-  );
+  ensureWorkflowDirectories();
 
   updateInstructionFiles();
 
@@ -119,6 +126,7 @@ function init() {
   console.log("Created:");
   console.log("- workflow/");
   console.log("- workflow/tasks/");
+  console.log("- workflow/reviews/");
   console.log("- AGENTS.md");
   console.log("- CLAUDE.md");
 }
@@ -138,6 +146,8 @@ function update() {
     sourceWorkflow,
     targetWorkflow
   );
+
+  ensureWorkflowDirectories();
 
   updateInstructionFiles();
 
@@ -160,6 +170,9 @@ function update() {
   console.log("Preserved:");
   console.log(
     "- workflow/tasks/"
+  );
+  console.log(
+    "- workflow/reviews/"
   );
 }
 
@@ -255,6 +268,274 @@ function createTask() {
   );
 }
 
+function git(args) {
+  return spawnSync("git", args, {
+    cwd: targetRoot,
+    encoding: "utf8",
+    maxBuffer: 100 * 1024 * 1024,
+    windowsHide: true,
+  });
+}
+
+function gitOutput(args, errorMessage) {
+  const result = git(args);
+
+  if (result.error || result.status !== 0) {
+    const detail = result.error
+      ? result.error.message
+      : (result.stderr || result.stdout || "").trim();
+
+    console.error(errorMessage);
+
+    if (detail) {
+      console.error(detail);
+    }
+
+    process.exit(1);
+  }
+
+  return result.stdout.trimEnd();
+}
+
+function refExists(ref) {
+  const result = git([
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${ref}^{commit}`,
+  ]);
+
+  return !result.error && result.status === 0;
+}
+
+function detectBase() {
+  const remoteDefault = git([
+    "symbolic-ref",
+    "--quiet",
+    "--short",
+    "refs/remotes/origin/HEAD",
+  ]);
+
+  if (remoteDefault.status === 0) {
+    const ref = remoteDefault.stdout.trim();
+
+    if (ref && refExists(ref)) {
+      return ref;
+    }
+  }
+
+  for (const ref of [
+    "main",
+    "origin/main",
+    "master",
+    "origin/master",
+  ]) {
+    if (refExists(ref)) {
+      return ref;
+    }
+  }
+
+  console.error(
+    "Unable to detect a base branch."
+  );
+  console.error(
+    "Provide one explicitly: npx ailovecode-workflow review-context <base>"
+  );
+  process.exit(1);
+}
+
+function taskDocument(pathName) {
+  const normalized = pathName.replace(/\\/g, "/");
+  const match = normalized.match(
+    /^workflow\/tasks\/([^/]+)\/(task\.md|implementation-plan\.md)$/
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    directory: `workflow/tasks/${match[1]}`,
+    fileName: match[2],
+  };
+}
+
+function changedTaskDirectories(nameStatus) {
+  const directories = new Set();
+
+  for (const line of nameStatus.split(/\r?\n/)) {
+    if (!line) continue;
+
+    const fields = line.split("\t");
+
+    for (const pathName of fields.slice(1)) {
+      const document = taskDocument(pathName);
+
+      if (document) {
+        directories.add(document.directory);
+      }
+    }
+  }
+
+  return [...directories].sort();
+}
+
+function markdownDocument(taskDirectory, fileName) {
+  const relativePath = `${taskDirectory}/${fileName}`;
+  const document = git([
+    "show",
+    `HEAD:${relativePath}`,
+  ]);
+
+  if (document.error || document.status !== 0) {
+    return `#### ${fileName}\n\nDocument is missing or deleted in the reviewed branch.`;
+  }
+
+  const content = document.stdout.trimEnd();
+
+  return [
+    `#### ${fileName}`,
+    "",
+    "~~~markdown",
+    content,
+    "~~~",
+  ].join("\n");
+}
+
+function reviewContext() {
+  const repositoryCheck = git([
+    "rev-parse",
+    "--is-inside-work-tree",
+  ]);
+
+  if (
+    repositoryCheck.error ||
+    repositoryCheck.status !== 0 ||
+    repositoryCheck.stdout.trim() !== "true"
+  ) {
+    console.error(
+      "review-context must be run inside a Git worktree."
+    );
+    process.exit(1);
+  }
+
+  const requestedBase = process.argv[3];
+  const base = requestedBase || detectBase();
+
+  if (base.startsWith("-") || !refExists(base)) {
+    console.error(
+      `Base ref not found: ${base}`
+    );
+    console.error(
+      "Use an existing branch or ref, such as main or origin/main."
+    );
+    process.exit(1);
+  }
+
+  const mergeBase = gitOutput(
+    ["merge-base", base, "HEAD"],
+    `Unable to find a merge base between ${base} and HEAD.`
+  );
+  const currentBranchResult = git([
+    "symbolic-ref",
+    "--quiet",
+    "--short",
+    "HEAD",
+  ]);
+  const currentBranch = currentBranchResult.status === 0
+    ? currentBranchResult.stdout.trim()
+    : "HEAD (detached)";
+  const headCommit = gitOutput(
+    ["rev-parse", "HEAD"],
+    "Unable to resolve HEAD."
+  );
+  const nameStatus = gitOutput(
+    [
+      "diff",
+      "--name-status",
+      "--find-renames",
+      `${base}...HEAD`,
+      "--",
+      ".",
+      ":(exclude)workflow/reviews/**",
+    ],
+    `Unable to collect changed files for ${base}...HEAD.`
+  );
+  const diff = gitOutput(
+    [
+      "diff",
+      "--find-renames",
+      "--no-ext-diff",
+      `${base}...HEAD`,
+      "--",
+      ".",
+      ":(exclude)workflow/reviews/**",
+    ],
+    `Unable to collect the diff for ${base}...HEAD.`
+  );
+  const taskDirectories = changedTaskDirectories(
+    nameStatus
+  );
+  const reportSlug = currentBranchResult.status === 0
+    ? toKebabCase(currentBranch) || `branch-${headCommit.slice(0, 12)}`
+    : `detached-${headCommit.slice(0, 12)}`;
+  const reportPath = `workflow/reviews/${reportSlug}.md`;
+  const sections = [
+    "# AI Love Code - Review Context",
+    "",
+    "## Repository",
+    "",
+    `- Base: \`${base}\``,
+    `- Head branch: \`${currentBranch}\``,
+    `- Head commit: \`${headCommit}\``,
+    `- Merge base: \`${mergeBase}\``,
+    `- Comparison: \`${base}...HEAD\``,
+    `- Review report: \`${reportPath}\``,
+    "",
+    "## Changed Files",
+    "",
+    "~~~text",
+    nameStatus || "No changed files.",
+    "~~~",
+    "",
+    "## Discovered Tasks",
+    "",
+  ];
+
+  if (taskDirectories.length === 0) {
+    sections.push(
+      "No changed task or implementation-plan documents were discovered. Use PR metadata, branch context, or user clarification to identify the task.",
+      ""
+    );
+  } else {
+    taskDirectories.forEach(
+      (taskDirectory, index) => {
+        sections.push(
+          `### Task ${index + 1} - ${taskDirectory}`,
+          "",
+          markdownDocument(taskDirectory, "task.md"),
+          "",
+          markdownDocument(
+            taskDirectory,
+            "implementation-plan.md"
+          ),
+          ""
+        );
+      }
+    );
+  }
+
+  sections.push(
+    "## Branch Diff",
+    "",
+    "~~~diff",
+    diff || "No branch diff.",
+    "~~~"
+  );
+
+  console.log(sections.join("\n"));
+}
+
 function version() {
   const pkg = require(
     path.join(
@@ -277,6 +558,7 @@ Usage:
   npx ailovecode-workflow init
   npx ailovecode-workflow update
   npx ailovecode-workflow create-task "task name"
+  npx ailovecode-workflow review-context [base]
   npx ailovecode-workflow version
 
 Aliases:
@@ -297,6 +579,10 @@ switch (command) {
 
   case "create-task":
     createTask();
+    break;
+
+  case "review-context":
+    reviewContext();
     break;
 
   case "version":

@@ -39,7 +39,8 @@ This creates:
 workflow/
 ├── guidelines.md
 ├── README.md
-└── tasks/
+├── tasks/
+└── reviews/
 
 AGENTS.md
 CLAUDE.md
@@ -68,9 +69,10 @@ This preserves:
 
 ```txt
 workflow/tasks/
+workflow/reviews/
 ```
 
-including all existing tasks and supporting materials.
+including all existing tasks, supporting materials, and review reports.
 
 ---
 
@@ -106,6 +108,35 @@ workflow/tasks/
 npx ailovecode-workflow version
 ```
 
+---
+
+## Collect PR Review Context
+
+Collect the branch diff and related task documents before an AI code review:
+
+```bash
+npx ailovecode-workflow review-context main
+```
+
+`main` is the branch the current branch will merge into. The command uses the merge-base comparison `main...HEAD`, so it collects changes introduced by the current branch.
+
+The base is optional:
+
+```bash
+npx ailovecode-workflow review-context
+```
+
+When omitted, the command checks the remote default branch, then existing `main` and `master` refs. An explicit base always takes precedence.
+
+The generated Markdown includes:
+
+* selected base, current branch, commits, and merge base
+* the standardized `workflow/reviews/<branch-slug>.md` report path
+* changed-file names and statuses
+* every changed `workflow/tasks/*/task.md` or `implementation-plan.md` pair
+* the complete branch diff
+
+Generated files under `workflow/reviews/**` are excluded so a previous report cannot affect a later review. `review-context` only collects inputs and identifies the output path; it does not generate or write the report. The connected coding agent performs the review, saves the report, and returns the same result to the human responsible for final approval.
 
 ---
 
@@ -195,6 +226,43 @@ Expected outcome:
 * Development Checkpoint (when useful)
 * Completed implementation
 
+### 6. Create a Pull Request
+
+**Human**
+
+Create a pull request from the implementation branch into its intended base branch.
+
+### 7. Run AI Code Review
+
+**Human → AI**
+
+Prompt:
+
+```text
+Review this PR.
+```
+
+Expected outcome:
+
+* Task alignment review
+* Implementation-plan alignment review
+* Engineering review
+* PR-level review
+* Standardized findings, severity, and verdict
+* Saved `workflow/reviews/<branch-slug>.md` report
+
+The AI should use the official context command when available:
+
+```bash
+npx ailovecode-workflow review-context <base>
+```
+
+### 8. Human Review and Merge
+
+**Human**
+
+Review the implementation and AI findings, then decide whether the PR is ready to merge.
+
 ### Workflow Overview
 
 ```text
@@ -217,6 +285,18 @@ Create implementation plan
 Human → AI
   ↓
 Implement the plan
+
+Human
+  ↓
+Create PR
+
+Human → AI
+  ↓
+AI Code Review
+
+Human
+  ↓
+Human Review and Merge
 ```
 
 ---
@@ -248,6 +328,31 @@ Used for:
 
 Defines workflow rules and AI behavior.
 
+### AI Code Review
+
+The review evaluates each task independently across:
+
+* task alignment
+* implementation-plan alignment
+* engineering quality
+
+It then performs a PR-level review for cross-task conflicts, unrelated changes, and excessive scope. Findings use Critical, High, Medium, or Low severity, with an overall verdict of PASS, WARNING, or CHANGES REQUESTED.
+
+AI Code Review is read-only for code, task, and plan files unless the user separately requests fixes. Its only automatic write is the AI-owned report at `workflow/reviews/<branch-slug>.md`. Reruns replace the same branch report, and generated reports are excluded from future review diffs. The verdict informs human review and does not replace human approval.
+
+### Review Report
+
+Each branch has one current report:
+
+```text
+workflow/
+├── tasks/
+└── reviews/
+    └── feature-add-code-review.md
+```
+
+The report contains review metadata, independent task reviews, the PR-level review, actionable findings, and the overall verdict. The AI creates or updates it after reviewing committed `HEAD`; it does not commit or push the report unless the user explicitly requests that action.
+
 ---
 
 ## Project Structure
@@ -261,6 +366,8 @@ workflow/
 │       ├── task.md
 │       ├── implementation-plan.md
 │       └── supporting-materials/
+└── reviews/
+    └── feature-branch-name.md
 ```
 
 ---
