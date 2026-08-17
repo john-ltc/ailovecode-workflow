@@ -48,6 +48,57 @@ CLAUDE.md
 
 ---
 
+## Split-Repository Setup
+
+Use split-repository mode when workflow tasks should live in a development-management repository while implementation happens in a separate target repository.
+
+Install and initialize AILoveCode Workflow only in the task repository, then link the implementation repository:
+
+```bash
+cd path/to/workflow-dev
+npx ailovecode-workflow init
+npx ailovecode-workflow configure-dev "path/to/implementation-project"
+```
+
+`configure-dev` validates both Git repositories, resolves their absolute paths, and creates or replaces a managed `<workflow-dev>` block in `AGENTS.md` and `CLAUDE.md`:
+
+```text
+<workflow-dev>
+Implementation repository:
+
+`C:\path\to\implementation-project`
+
+Workflow task repository:
+
+`C:\path\to\workflow-dev`
+...
+</workflow-dev>
+```
+
+The generated routing rules keep:
+
+* tasks, plans, supporting materials, progress, and review reports in the workflow task repository
+* source code, implementation tests, builds, and implementation commits in the implementation repository
+
+The command does not modify or install workflow files in the implementation repository. Run it again with a different target path to reconfigure the link; the existing managed block is replaced rather than duplicated.
+
+### Split-Repository Flow
+
+| Phase | Workflow task repository | Implementation repository |
+| --- | --- | --- |
+| Setup | Install AILoveCode Workflow and run `configure-dev` | Remains free of workflow files |
+| Task | Create, write, and understand `task.md` | No changes |
+| Plan | Create and maintain `implementation-plan.md` | Read target instructions and inspect relevant code |
+| Implement | Track decisions and milestone progress | Change code and tests; run target validation |
+| Review | Read the task and plan; store the review report | Collect and review the target branch diff |
+| Git handoff | Commit workflow artifacts only when requested | Commit implementation changes only when requested |
+
+The two repositories keep independent branches and Git histories. A commit, push, or PR action in one repository does not authorize the same action in the other.
+
+In the first split-repository version, `review-context` does not automatically combine repositories. The reviewing agent collects the target `<base>...HEAD` diff in the implementation repository, reads the active task and plan from the workflow repository, and stores the final report in the workflow repository.
+
+---
+
 ## Updating Workflow
 
 Update the installed workflow files:

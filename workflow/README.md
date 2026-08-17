@@ -68,6 +68,38 @@ The AI should follow the rules defined in `guidelines.md` throughout the process
 
 ---
 
+## Split-Repository Workflow
+
+When tasks belong in this repository but implementation belongs in another Git repository, configure an explicit target:
+
+```bash
+npx ailovecode-workflow configure-dev "path/to/implementation-project"
+```
+
+The command writes one managed `<workflow-dev>` block to `AGENTS.md` and `CLAUDE.md`. It records the absolute workflow task and implementation repository paths and may be rerun safely to change the target.
+
+Responsibilities are split as follows:
+
+```text
+Workflow task repository
+├── task.md
+├── implementation-plan.md
+├── supporting-materials/
+└── workflow/reviews/
+
+Implementation repository
+├── source code
+├── implementation tests
+├── builds and validation
+└── implementation Git history
+```
+
+Before target work, the AI reads repository-specific instructions and checks branch/worktree state in both repositories. It does not install workflow files in the implementation repository or commit/push either repository without explicit permission.
+
+For split-repository review, the AI combines the target repository's `<base>...HEAD` diff with the active task and plan from this repository, then saves the review report here. Automatic cross-repository `review-context` discovery is not part of the first version.
+
+---
+
 ## Important Files
 
 ### guidelines.md

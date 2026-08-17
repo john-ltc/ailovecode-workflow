@@ -300,6 +300,10 @@ test("existing commands remain available", (t) => {
   );
 
   assert.equal(help.status, 0, help.stderr);
+  assert.match(
+    help.stdout,
+    /configure-dev "implementation repository"/
+  );
   assert.match(help.stdout, /review-context \[base\]/);
   assert.equal(version.status, 0, version.stderr);
   assert.match(version.stdout, /AILoveCode Workflow v1\.0\.0/);

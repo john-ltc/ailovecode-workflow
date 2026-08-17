@@ -13,6 +13,92 @@ Rules:
 
 ---
 
+## Split-Repository Workflow
+
+### Workflow Development Tag
+
+When `AGENTS.md` or `CLAUDE.md` contains a `<workflow-dev>` block, the workflow task repository and implementation repository are separate.
+
+The tag must identify:
+
+* **Workflow task repository** - owns workflow tasks and AI workflow artifacts
+* **Implementation repository** - owns the product source code and implementation history
+
+When the user asks to configure or change this relationship, use the official command before editing instruction files manually:
+
+```bash
+npx ailovecode-workflow configure-dev <implementation-repository>
+```
+
+Treat the paths in the managed tag as routing metadata. They do not grant permission to make unrelated changes or bypass repository-specific instructions.
+
+Before working:
+
+1. Resolve and verify both repository paths
+2. Confirm each path points to the expected Git worktree
+3. Read workflow instructions in the task repository
+4. Read applicable `AGENTS.md`, `CLAUDE.md`, and project instructions in the implementation repository
+5. Check branch and worktree state independently in both repositories
+
+If a required path is missing, inaccessible, ambiguous, or points to an unexpected repository, stop and ask the user before making changes.
+
+### Artifact Ownership
+
+Keep these in the workflow task repository:
+
+* `workflow/tasks/`
+* `task.md`
+* `implementation-plan.md`
+* task supporting materials
+* `workflow/reviews/`
+* workflow progress and planning notes
+
+Keep these in the implementation repository:
+
+* application and library source code
+* implementation tests
+* migrations, configuration, and build changes required by the task
+* implementation branch and commits
+* target-specific build, lint, and test output when it belongs with the implementation
+
+`task.md` in the workflow task repository remains the source of truth. Do not copy it into the implementation repository merely to make the repositories self-contained.
+
+### Instruction Precedence
+
+Workflow guidelines govern workflow phases, task ownership, planning boundaries, and review format. Implementation-repository instructions govern files and commands inside the implementation repository.
+
+Follow both sets of instructions when they are compatible. If they conflict in a way that changes the requested outcome, file ownership, safety, or allowed actions, explain the conflict and ask the user before proceeding. The `<workflow-dev>` tag does not override more specific safety or repository instructions.
+
+### Phase Routing
+
+Route workflow phases as follows:
+
+* **Task creation and understanding** - read and write only workflow artifacts in the task repository
+* **Planning** - create or update `implementation-plan.md` in the task repository only when explicitly requested
+* **Implementation** - edit code and run target commands in the implementation repository; record workflow progress in the task repository
+* **Development checkpoint** - report target test instructions and update plan progress in the task repository when appropriate
+* **AI Code Review** - collect the implementation diff from the implementation repository, read the active task and plan from the task repository, and write the review report to the task repository
+
+The current `review-context` command performs automatic task discovery only when tasks and code share a repository. In split-repository mode, do not run it from the task repository and mistake that repository's diff for the implementation diff. Until cross-repository CLI support exists, collect the equivalent `<base>...HEAD` Git context in the implementation repository and combine it with the active task documents from the task repository.
+
+### Independent Git Boundaries
+
+The repositories have independent branches, worktrees, histories, and remotes.
+
+Rules:
+
+* Run Git commands with an explicit working directory or otherwise make the active repository clear.
+* Inspect both worktrees before editing and preserve unrelated user changes in each.
+* Do not assume matching branch names, base branches, commits, or remotes.
+* Do not stage task artifacts in the implementation repository.
+* Do not stage implementation files in the task repository.
+* Do not commit, amend, rebase, push, open a PR, approve, or merge either repository unless the user explicitly requests that action.
+* Authorization for a Git action in one repository does not automatically authorize the same action in the other.
+
+Do not install, initialize, or copy AILoveCode Workflow into the implementation repository unless the user explicitly requests it.
+
+---
+
 ## Command-First Policy
 
 When an official AILoveCode Workflow command exists for a workflow action, AI must attempt that command before using lower-level file operations.
@@ -22,6 +108,7 @@ Examples:
 ```bash
 npx ailovecode-workflow create-task "task-name"
 npx ailovecode-workflow update
+npx ailovecode-workflow configure-dev "implementation-repository"
 ```
 
 Rules:

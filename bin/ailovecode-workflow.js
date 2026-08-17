@@ -29,6 +29,7 @@ function copyDir(src, dest) {
   for (const item of fs.readdirSync(src)) {
     if (item === "tasks") continue;
     if (item === "workflow-tag.md") continue;
+    if (item === "workflow-dev-tag.md") continue;
 
     const srcPath = path.join(src, item);
     const destPath = path.join(dest, item);
@@ -85,6 +86,184 @@ function ensureWorkflowTag(fileName) {
 function updateInstructionFiles() {
   ensureWorkflowTag("AGENTS.md");
   ensureWorkflowTag("CLAUDE.md");
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function upsertManagedBlock(content, startTag, endTag, tagContent) {
+  const regex = new RegExp(
+    `${escapeRegExp(startTag)}[\\s\\S]*?${escapeRegExp(endTag)}`,
+    "g"
+  );
+  const withoutBlock = content.replace(regex, "").trimEnd();
+
+  return (
+    withoutBlock +
+    (withoutBlock.trim() ? "\n\n" : "") +
+    tagContent.trim() +
+    "\n"
+  );
+}
+
+function gitTopLevel(directory) {
+  const result = spawnSync(
+    "git",
+    ["-C", directory, "rev-parse", "--show-toplevel"],
+    {
+      encoding: "utf8",
+      windowsHide: true,
+    }
+  );
+
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  return path.resolve(result.stdout.trim());
+}
+
+function samePath(first, second) {
+  const normalize = (value) => {
+    const normalized = path.normalize(value);
+    return process.platform === "win32"
+      ? normalized.toLowerCase()
+      : normalized;
+  };
+
+  return normalize(first) === normalize(second);
+}
+
+function markdownPath(value) {
+  return value.replace(/`/g, "\\`");
+}
+
+function tagPathIsSafe(value) {
+  return !/[\r\n<>]/.test(value);
+}
+
+function configureDev() {
+  const implementationInput = process.argv.slice(3).join(" ").trim();
+
+  if (!implementationInput) {
+    console.error("Please provide an implementation repository.");
+    console.error(
+      'Example: npx ailovecode-workflow configure-dev "C:\\path\\to\\project"'
+    );
+    process.exit(1);
+  }
+
+  if (
+    !fs.existsSync(targetWorkflow) ||
+    !fs.existsSync(path.join(targetWorkflow, "guidelines.md"))
+  ) {
+    console.error("workflow folder not found.");
+    console.error("Run this first: npx ailovecode-workflow init");
+    process.exit(1);
+  }
+
+  const taskRepository = gitTopLevel(targetRoot);
+
+  if (!taskRepository || !samePath(taskRepository, targetRoot)) {
+    console.error(
+      "configure-dev must be run from the root of the workflow task Git repository."
+    );
+    process.exit(1);
+  }
+
+  const requestedImplementation = path.resolve(
+    targetRoot,
+    implementationInput
+  );
+
+  if (
+    !fs.existsSync(requestedImplementation) ||
+    !fs.statSync(requestedImplementation).isDirectory()
+  ) {
+    console.error(
+      `Implementation repository not found: ${requestedImplementation}`
+    );
+    process.exit(1);
+  }
+
+  const implementationRepository = gitTopLevel(
+    requestedImplementation
+  );
+
+  if (!implementationRepository) {
+    console.error(
+      `Implementation path is not a Git worktree: ${requestedImplementation}`
+    );
+    process.exit(1);
+  }
+
+  if (samePath(taskRepository, implementationRepository)) {
+    console.error(
+      "The implementation repository must be different from the workflow task repository."
+    );
+    process.exit(1);
+  }
+
+  if (
+    !tagPathIsSafe(taskRepository) ||
+    !tagPathIsSafe(implementationRepository)
+  ) {
+    console.error(
+      "Repository paths containing line breaks or angle brackets are not supported in workflow tags."
+    );
+    process.exit(1);
+  }
+
+  const templatePath = path.join(
+    sourceWorkflow,
+    "workflow-dev-tag.md"
+  );
+
+  if (!fs.existsSync(templatePath)) {
+    console.error("workflow-dev tag template not found.");
+    process.exit(1);
+  }
+
+  const tagContent = fs
+    .readFileSync(templatePath, "utf8")
+    .replace(
+      /{{IMPLEMENTATION_REPOSITORY}}/g,
+      () => markdownPath(implementationRepository)
+    )
+    .replace(
+      /{{WORKFLOW_TASK_REPOSITORY}}/g,
+      () => markdownPath(taskRepository)
+    )
+    .trim();
+
+  updateInstructionFiles();
+
+  for (const fileName of ["AGENTS.md", "CLAUDE.md"]) {
+    const filePath = path.join(targetRoot, fileName);
+    const content = fs.existsSync(filePath)
+      ? fs.readFileSync(filePath, "utf8")
+      : "";
+    const updated = upsertManagedBlock(
+      content,
+      "<workflow-dev>",
+      "</workflow-dev>",
+      tagContent
+    );
+
+    fs.writeFileSync(filePath, updated, "utf8");
+  }
+
+  console.log("Workflow development repositories configured.");
+  console.log("");
+  console.log(`Workflow task repository: ${taskRepository}`);
+  console.log(
+    `Implementation repository: ${implementationRepository}`
+  );
+  console.log("");
+  console.log("Updated:");
+  console.log("- AGENTS.md");
+  console.log("- CLAUDE.md");
 }
 
 function ensureWorkflowDirectories() {
@@ -557,6 +736,7 @@ Usage:
 
   npx ailovecode-workflow init
   npx ailovecode-workflow update
+  npx ailovecode-workflow configure-dev "implementation repository"
   npx ailovecode-workflow create-task "task name"
   npx ailovecode-workflow review-context [base]
   npx ailovecode-workflow version
@@ -575,6 +755,10 @@ switch (command) {
 
   case "update":
     update();
+    break;
+
+  case "configure-dev":
+    configureDev();
     break;
 
   case "create-task":
