@@ -12,11 +12,12 @@ const cli = path.resolve(
   "ailovecode-workflow.js"
 );
 
-function run(executable, args, cwd) {
+function run(executable, args, cwd, options = {}) {
   return spawnSync(executable, args, {
     cwd,
     encoding: "utf8",
     windowsHide: true,
+    ...options,
   });
 }
 
@@ -105,9 +106,20 @@ test("collects explicit-base context for multiple tasks", (t) => {
   assert.match(result.stdout, /# AI Love Code - Review Context/);
   assert.match(result.stdout, /- Base: `main`/);
   assert.match(result.stdout, /- Head branch: `feature\/review`/);
+  const reportPaths = [
+    ...result.stdout.matchAll(
+      /- Review report: `(workflow\/tasks\/[^`]+\/reviews\/(\d{8}T\d{6})\.md)`/g
+    ),
+  ];
+  assert.equal(reportPaths.length, 2);
+  assert.equal(reportPaths[0][2], reportPaths[1][2]);
   assert.match(
-    result.stdout,
-    /- Review report: `workflow\/reviews\/feature-review\.md`/
+    reportPaths[0][1],
+    /^workflow\/tasks\/existing-task\/reviews\//
+  );
+  assert.match(
+    reportPaths[1][1],
+    /^workflow\/tasks\/new-task\/reviews\//
   );
   assert.match(
     result.stdout,
@@ -121,6 +133,94 @@ test("collects explicit-base context for multiple tasks", (t) => {
   assert.match(result.stdout, /Updated approach\./);
   assert.match(result.stdout, /Add the review feature\./);
   assert.match(result.stdout, /diff --git a\/feature\.js b\/feature\.js/);
+  assert.equal(
+    fs.existsSync(
+      path.join(repo, "workflow/tasks/existing-task/reviews")
+    ),
+    false
+  );
+  assert.equal(
+    fs.existsSync(path.join(repo, "workflow/tasks/new-task/reviews")),
+    false
+  );
+});
+
+test("emits structured JSON with one output path per task", (t) => {
+  const repo = makeRepository(t);
+  commitFeature(repo);
+
+  const result = run(
+    process.execPath,
+    [cli, "review-context", "main", "--json"],
+    repo
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  const context = JSON.parse(result.stdout);
+
+  assert.equal(context.repository.base, "main");
+  assert.equal(context.repository.headBranch, "feature/review");
+  assert.match(context.reviewTimestamp, /^\d{8}T\d{6}$/);
+  assert.equal(context.tasks.length, 2);
+  assert.deepEqual(
+    context.tasks.map((task) => task.directory),
+    [
+      "workflow/tasks/existing-task",
+      "workflow/tasks/new-task",
+    ]
+  );
+  assert.match(
+    context.tasks[0].reportPath,
+    /^workflow\/tasks\/existing-task\/reviews\/\d{8}T\d{6}\.md$/
+  );
+  assert.match(
+    context.tasks[1].reportPath,
+    /^workflow\/tasks\/new-task\/reviews\/\d{8}T\d{6}\.md$/
+  );
+  assert.equal(context.tasks[1].documents.task.missing, false);
+  assert.match(
+    context.tasks[1].documents.task.content,
+    /Add the review feature\./
+  );
+  assert.match(context.branchDiff, /diff --git a\/feature\.js/);
+});
+
+test("uses a suffix instead of reusing an existing review path", (t) => {
+  const repo = makeRepository(t);
+  commitFeature(repo);
+  const fixedTimestamp = "20260901T230047";
+  const environment = {
+    ...process.env,
+    AILOVECODE_WORKFLOW_REVIEW_TIMESTAMP: fixedTimestamp,
+  };
+
+  write(
+    repo,
+    `workflow/tasks/new-task/reviews/${fixedTimestamp}.md`,
+    "# Existing Review\n"
+  );
+  write(
+    repo,
+    `workflow/tasks/new-task/reviews/${fixedTimestamp}-02.md`,
+    "# Existing Review 2\n"
+  );
+
+  const result = run(
+    process.execPath,
+    [cli, "review-context", "main", "--json"],
+    repo,
+    { env: environment }
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  const context = JSON.parse(result.stdout);
+  const newTask = context.tasks.find(
+    (task) => task.directory === "workflow/tasks/new-task"
+  );
+  assert.equal(
+    newTask.reportPath,
+    `workflow/tasks/new-task/reviews/${fixedTimestamp}-03.md`
+  );
 });
 
 test("detects main automatically when no remote default exists", (t) => {
@@ -146,6 +246,11 @@ test("reports when a branch has no changed task documents", (t) => {
     "workflow/reviews/feature-code-only.md",
     "# Previous Review\n"
   );
+  write(
+    repo,
+    "workflow/tasks/existing-task/reviews/20260901T210000.md",
+    "# Previous Task Review\n"
+  );
   git(repo, ["add", "."]);
   git(repo, ["commit", "-m", "code-only change"]);
 
@@ -169,9 +274,13 @@ test("reports when a branch has no changed task documents", (t) => {
     result.stdout,
     /diff --git a\/workflow\/reviews\//
   );
+  assert.doesNotMatch(
+    result.stdout,
+    /workflow\/tasks\/existing-task\/reviews\/20260901T210000/
+  );
 });
 
-test("uses the commit hash for a detached-HEAD report path", (t) => {
+test("uses task-local report paths in detached HEAD", (t) => {
   const repo = makeRepository(t);
   commitFeature(repo);
   const commit = git(repo, ["rev-parse", "HEAD"]);
@@ -185,10 +294,10 @@ test("uses the commit hash for a detached-HEAD report path", (t) => {
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /- Head branch: `HEAD \(detached\)`/);
-  assert.ok(
-    result.stdout.includes(
-      `- Review report: \`workflow/reviews/detached-${commit.slice(0, 12)}.md\``
-    )
+  assert.ok(result.stdout.includes(`- Head commit: \`${commit}\``));
+  assert.match(
+    result.stdout,
+    /- Review report: `workflow\/tasks\/new-task\/reviews\/\d{8}T\d{6}\.md`/
   );
 });
 
@@ -293,7 +402,7 @@ test("existing commands remain available", (t) => {
     [cli, "create-task", "smoke task"],
     directory
   );
-  const update = run(
+  const updateWithoutGlobalReviews = run(
     process.execPath,
     [cli, "update"],
     directory
@@ -309,14 +418,52 @@ test("existing commands remain available", (t) => {
   assert.match(version.stdout, /AILoveCode Workflow v1\.0\.0/);
   assert.equal(init.status, 0, init.stderr);
   assert.equal(createTask.status, 0, createTask.stderr);
-  assert.equal(update.status, 0, update.stderr);
+  assert.equal(
+    updateWithoutGlobalReviews.status,
+    0,
+    updateWithoutGlobalReviews.stderr
+  );
   assert.equal(fs.existsSync(path.join(directory, "workflow")), true);
   assert.equal(
     fs.existsSync(path.join(directory, "workflow", "reviews")),
-    true
+    false
   );
   assert.equal(
     fs.readdirSync(path.join(directory, "workflow", "tasks")).length,
     1
+  );
+  const taskDirectory = fs.readdirSync(
+    path.join(directory, "workflow", "tasks")
+  )[0];
+  assert.equal(
+    fs.existsSync(
+      path.join(directory, "workflow", "tasks", taskDirectory, "reviews")
+    ),
+    false
+  );
+
+  const existingGlobalReport = path.join(
+    directory,
+    "workflow",
+    "reviews",
+    "main.md"
+  );
+  fs.mkdirSync(path.dirname(existingGlobalReport), { recursive: true });
+  fs.writeFileSync(existingGlobalReport, "# Existing Review\n", "utf8");
+
+  const updateWithGlobalReviews = run(
+    process.execPath,
+    [cli, "update"],
+    directory
+  );
+
+  assert.equal(
+    updateWithGlobalReviews.status,
+    0,
+    updateWithGlobalReviews.stderr
+  );
+  assert.equal(
+    fs.readFileSync(existingGlobalReport, "utf8"),
+    "# Existing Review\n"
   );
 });

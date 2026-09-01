@@ -39,8 +39,7 @@ This creates:
 workflow/
 ├── guidelines.md
 ├── README.md
-├── tasks/
-└── reviews/
+└── tasks/
 
 AGENTS.md
 CLAUDE.md
@@ -77,7 +76,7 @@ Workflow task repository:
 
 The generated routing rules keep:
 
-* tasks, plans, supporting materials, progress, and review reports in the workflow task repository
+* tasks, plans, supporting materials, progress, and task-local review reports in the workflow task repository
 * source code, implementation tests, builds, and implementation commits in the implementation repository
 
 The command does not modify or install workflow files in the implementation repository. Run it again with a different target path to reconfigure the link; the existing managed block is replaced rather than duplicated.
@@ -90,12 +89,12 @@ The command does not modify or install workflow files in the implementation repo
 | Task | Create, write, and understand `task.md` | No changes |
 | Plan | Create and maintain `implementation-plan.md` | Read target instructions and inspect relevant code |
 | Implement | Track decisions and milestone progress | Change code and tests; run target validation |
-| Review | Read the task and plan; store the review report | Collect and review the target branch diff |
+| Review | Read each task and plan; store task-local review reports | Collect and review the target branch diff |
 | Git handoff | Commit workflow artifacts only when requested | Commit implementation changes only when requested |
 
 The two repositories keep independent branches and Git histories. A commit, push, or PR action in one repository does not authorize the same action in the other.
 
-In the first split-repository version, `review-context` does not automatically combine repositories. The reviewing agent collects the target `<base>...HEAD` diff in the implementation repository, reads the active task and plan from the workflow repository, and stores the final report in the workflow repository.
+In the first split-repository version, `review-context` does not automatically combine repositories. The reviewing agent collects the target `<base>...HEAD` diff in the implementation repository, reads each active task and plan from the workflow repository, and stores each final report in its task directory in the workflow repository.
 
 ---
 
@@ -120,10 +119,9 @@ This preserves:
 
 ```txt
 workflow/tasks/
-workflow/reviews/
 ```
 
-including all existing tasks, supporting materials, and review reports.
+including all existing tasks, supporting materials, and task-local reviews. Updating does not create a global reviews directory.
 
 ---
 
@@ -179,15 +177,21 @@ npx ailovecode-workflow review-context
 
 When omitted, the command checks the remote default branch, then existing `main` and `master` refs. An explicit base always takes precedence.
 
+Use JSON output for integrations or reliable multi-task path mapping:
+
+```bash
+npx ailovecode-workflow review-context main --json
+```
+
 The generated Markdown includes:
 
 * selected base, current branch, commits, and merge base
-* the standardized `workflow/reviews/<branch-slug>.md` report path
 * changed-file names and statuses
 * every changed `workflow/tasks/*/task.md` or `implementation-plan.md` pair
+* one `workflow/tasks/<task-id>/reviews/YYYYMMDDTHHMMSS.md` output path per discovered task
 * the complete branch diff
 
-Generated files under `workflow/reviews/**` are excluded so a previous report cannot affect a later review. `review-context` only collects inputs and identifies the output path; it does not generate or write the report. The connected coding agent performs the review, saves the report, and returns the same result to the human responsible for final approval.
+Generated files under both `workflow/reviews/**` and task-local `workflow/tasks/*/reviews/**` paths are excluded so previous reports cannot affect later reviews. `review-context` only collects inputs and identifies output paths; it does not create directories, generate reports, or write files. The connected coding agent performs the review, saves one report per task, and returns the aggregate result to the human responsible for final approval.
 
 ---
 
@@ -300,7 +304,7 @@ Expected outcome:
 * Engineering review
 * PR-level review
 * Standardized findings, severity, and verdict
-* Saved `workflow/reviews/<branch-slug>.md` report
+* One saved `workflow/tasks/<task-id>/reviews/<timestamp>.md` report per task
 
 The AI should use the official context command when available:
 
@@ -389,20 +393,22 @@ The review evaluates each task independently across:
 
 It then performs a PR-level review for cross-task conflicts, unrelated changes, and excessive scope. Findings use Critical, High, Medium, or Low severity, with an overall verdict of PASS, WARNING, or CHANGES REQUESTED.
 
-AI Code Review is read-only for code, task, and plan files unless the user separately requests fixes. Its only automatic write is the AI-owned report at `workflow/reviews/<branch-slug>.md`. Reruns replace the same branch report, and generated reports are excluded from future review diffs. The verdict informs human review and does not replace human approval.
+AI Code Review is read-only for code, task, plan, and previous report files unless the user separately requests fixes. Its only automatic writes are new AI-owned reports under each task's `reviews/` directory. Reruns create new timestamped history instead of replacing earlier reviews, and generated reports are excluded from future review diffs. The verdict informs human review and does not replace human approval.
 
 ### Review Report
 
-Each branch has one current report:
+Each reviewed task receives a timestamped report:
 
 ```text
 workflow/
-├── tasks/
-└── reviews/
-    └── feature-add-code-review.md
+└── tasks/
+    └── YYYYMMDDTHHMM_task-name/
+        └── reviews/
+            ├── 20260901T230015.md
+            └── 20260901T230047.md
 ```
 
-The report contains review metadata, independent task reviews, the PR-level review, actionable findings, and the overall verdict. The AI creates or updates it after reviewing committed `HEAD`; it does not commit or push the report unless the user explicitly requests that action.
+Each report contains task and Git metadata, the task's three review dimensions, actionable findings, and its verdict. The newest timestamped filename is the latest review; no duplicated `latest.md` is created. Cross-task and PR-level findings remain in the aggregate response rather than a new global file. The AI does not commit or push reports unless the user explicitly requests that action.
 
 ---
 
@@ -412,13 +418,13 @@ The report contains review metadata, independent task reviews, the PR-level revi
 workflow/
 ├── guidelines.md
 ├── README.md
-├── tasks/
+└── tasks/
 │   └── YYYYMMDDTHHMM_task-name
 │       ├── task.md
 │       ├── implementation-plan.md
-│       └── supporting-materials/
-└── reviews/
-    └── feature-branch-name.md
+│       ├── supporting-materials/
+│       └── reviews/
+│           └── YYYYMMDDTHHMMSS.md
 ```
 
 ---

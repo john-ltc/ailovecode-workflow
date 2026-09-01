@@ -28,6 +28,7 @@ function copyDir(src, dest) {
 
   for (const item of fs.readdirSync(src)) {
     if (item === "tasks") continue;
+    if (item === "reviews") continue;
     if (item === "workflow-tag.md") continue;
     if (item === "workflow-dev-tag.md") continue;
 
@@ -271,10 +272,6 @@ function ensureWorkflowDirectories() {
     path.join(targetWorkflow, "tasks"),
     { recursive: true }
   );
-  fs.mkdirSync(
-    path.join(targetWorkflow, "reviews"),
-    { recursive: true }
-  );
 }
 
 function init() {
@@ -305,7 +302,6 @@ function init() {
   console.log("Created:");
   console.log("- workflow/");
   console.log("- workflow/tasks/");
-  console.log("- workflow/reviews/");
   console.log("- AGENTS.md");
   console.log("- CLAUDE.md");
 }
@@ -350,9 +346,6 @@ function update() {
   console.log(
     "- workflow/tasks/"
   );
-  console.log(
-    "- workflow/reviews/"
-  );
 }
 
 function toKebabCase(value) {
@@ -376,6 +369,36 @@ function timestamp() {
     "T" +
     pad(now.getHours()) +
     pad(now.getMinutes())
+  );
+}
+
+function reviewTimestamp() {
+  const override = process.env.AILOVECODE_WORKFLOW_REVIEW_TIMESTAMP;
+
+  if (override) {
+    if (!/^\d{8}T\d{6}$/.test(override)) {
+      console.error(
+        "AILOVECODE_WORKFLOW_REVIEW_TIMESTAMP must use YYYYMMDDTHHMMSS."
+      );
+      process.exit(1);
+    }
+
+    return override;
+  }
+
+  const now = new Date();
+
+  const pad = (n) =>
+    String(n).padStart(2, "0");
+
+  return (
+    now.getFullYear() +
+    pad(now.getMonth() + 1) +
+    pad(now.getDate()) +
+    "T" +
+    pad(now.getHours()) +
+    pad(now.getMinutes()) +
+    pad(now.getSeconds())
   );
 }
 
@@ -559,7 +582,7 @@ function changedTaskDirectories(nameStatus) {
   return [...directories].sort();
 }
 
-function markdownDocument(taskDirectory, fileName) {
+function taskDocumentAtHead(taskDirectory, fileName) {
   const relativePath = `${taskDirectory}/${fileName}`;
   const document = git([
     "show",
@@ -567,18 +590,73 @@ function markdownDocument(taskDirectory, fileName) {
   ]);
 
   if (document.error || document.status !== 0) {
-    return `#### ${fileName}\n\nDocument is missing or deleted in the reviewed branch.`;
+    return {
+      path: relativePath,
+      missing: true,
+      content: null,
+    };
   }
 
-  const content = document.stdout.trimEnd();
+  return {
+    path: relativePath,
+    missing: false,
+    content: document.stdout.trimEnd(),
+  };
+}
+
+function markdownDocument(document) {
+  const fileName = path.posix.basename(document.path);
+
+  if (document.missing) {
+    return `#### ${fileName}\n\nDocument is missing or deleted in the reviewed branch.`;
+  }
 
   return [
     `#### ${fileName}`,
     "",
     "~~~markdown",
-    content,
+    document.content,
     "~~~",
   ].join("\n");
+}
+
+function availableReviewPath(taskDirectory, timestampValue) {
+  const basePath = `${taskDirectory}/reviews/${timestampValue}`;
+  let candidate = `${basePath}.md`;
+  let sequence = 2;
+
+  while (fs.existsSync(path.join(targetRoot, candidate))) {
+    candidate = `${basePath}-${String(sequence).padStart(2, "0")}.md`;
+    sequence += 1;
+  }
+
+  return candidate;
+}
+
+function reviewContextArguments() {
+  let base = null;
+  let json = false;
+
+  for (const argument of process.argv.slice(3)) {
+    if (argument === "--json") {
+      json = true;
+      continue;
+    }
+
+    if (argument.startsWith("-")) {
+      console.error(`Unknown review-context option: ${argument}`);
+      process.exit(1);
+    }
+
+    if (base) {
+      console.error("review-context accepts at most one base ref.");
+      process.exit(1);
+    }
+
+    base = argument;
+  }
+
+  return { base, json };
 }
 
 function reviewContext() {
@@ -598,7 +676,8 @@ function reviewContext() {
     process.exit(1);
   }
 
-  const requestedBase = process.argv[3];
+  const options = reviewContextArguments();
+  const requestedBase = options.base;
   const base = requestedBase || detectBase();
 
   if (base.startsWith("-") || !refExists(base)) {
@@ -637,6 +716,7 @@ function reviewContext() {
       "--",
       ".",
       ":(exclude)workflow/reviews/**",
+      ":(exclude)workflow/tasks/*/reviews/**",
     ],
     `Unable to collect changed files for ${base}...HEAD.`
   );
@@ -649,16 +729,44 @@ function reviewContext() {
       "--",
       ".",
       ":(exclude)workflow/reviews/**",
+      ":(exclude)workflow/tasks/*/reviews/**",
     ],
     `Unable to collect the diff for ${base}...HEAD.`
   );
   const taskDirectories = changedTaskDirectories(
     nameStatus
   );
-  const reportSlug = currentBranchResult.status === 0
-    ? toKebabCase(currentBranch) || `branch-${headCommit.slice(0, 12)}`
-    : `detached-${headCommit.slice(0, 12)}`;
-  const reportPath = `workflow/reviews/${reportSlug}.md`;
+  const reportTimestamp = reviewTimestamp();
+  const tasks = taskDirectories.map((taskDirectory) => ({
+    directory: taskDirectory,
+    reportPath: availableReviewPath(taskDirectory, reportTimestamp),
+    documents: {
+      task: taskDocumentAtHead(taskDirectory, "task.md"),
+      implementationPlan: taskDocumentAtHead(
+        taskDirectory,
+        "implementation-plan.md"
+      ),
+    },
+  }));
+  const context = {
+    reviewTimestamp: reportTimestamp,
+    repository: {
+      base,
+      headBranch: currentBranch,
+      headCommit,
+      mergeBase,
+      comparison: `${base}...HEAD`,
+    },
+    changedFiles: nameStatus,
+    tasks,
+    branchDiff: diff,
+  };
+
+  if (options.json) {
+    console.log(JSON.stringify(context, null, 2));
+    return;
+  }
+
   const sections = [
     "# AI Love Code - Review Context",
     "",
@@ -669,7 +777,7 @@ function reviewContext() {
     `- Head commit: \`${headCommit}\``,
     `- Merge base: \`${mergeBase}\``,
     `- Comparison: \`${base}...HEAD\``,
-    `- Review report: \`${reportPath}\``,
+    `- Review timestamp: \`${reportTimestamp}\``,
     "",
     "## Changed Files",
     "",
@@ -681,23 +789,22 @@ function reviewContext() {
     "",
   ];
 
-  if (taskDirectories.length === 0) {
+  if (tasks.length === 0) {
     sections.push(
-      "No changed task or implementation-plan documents were discovered. Use PR metadata, branch context, or user clarification to identify the task.",
+      "No changed task or implementation-plan documents were discovered. Use PR metadata, branch context, or user clarification to identify the task before selecting a task-local review report path.",
       ""
     );
   } else {
-    taskDirectories.forEach(
-      (taskDirectory, index) => {
+    tasks.forEach(
+      (task, index) => {
         sections.push(
-          `### Task ${index + 1} - ${taskDirectory}`,
+          `### Task ${index + 1} - ${task.directory}`,
           "",
-          markdownDocument(taskDirectory, "task.md"),
+          `- Review report: \`${task.reportPath}\``,
           "",
-          markdownDocument(
-            taskDirectory,
-            "implementation-plan.md"
-          ),
+          markdownDocument(task.documents.task),
+          "",
+          markdownDocument(task.documents.implementationPlan),
           ""
         );
       }
@@ -738,7 +845,7 @@ Usage:
   npx ailovecode-workflow update
   npx ailovecode-workflow configure-dev "implementation repository"
   npx ailovecode-workflow create-task "task name"
-  npx ailovecode-workflow review-context [base]
+  npx ailovecode-workflow review-context [base] [--json]
   npx ailovecode-workflow version
 
 Aliases:

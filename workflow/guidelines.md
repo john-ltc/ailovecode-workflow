@@ -50,7 +50,7 @@ Keep these in the workflow task repository:
 * `task.md`
 * `implementation-plan.md`
 * task supporting materials
-* `workflow/reviews/`
+* task-local `workflow/tasks/<task-id>/reviews/` reports
 * workflow progress and planning notes
 
 Keep these in the implementation repository:
@@ -77,9 +77,9 @@ Route workflow phases as follows:
 * **Planning** - create or update `implementation-plan.md` in the task repository only when explicitly requested
 * **Implementation** - edit code and run target commands in the implementation repository; record workflow progress in the task repository
 * **Development checkpoint** - report target test instructions and update plan progress in the task repository when appropriate
-* **AI Code Review** - collect the implementation diff from the implementation repository, read the active task and plan from the task repository, and write the review report to the task repository
+* **AI Code Review** - collect the implementation diff from the implementation repository, read each active task and plan from the task repository, and write one task-local review report per task
 
-The current `review-context` command performs automatic task discovery only when tasks and code share a repository. In split-repository mode, do not run it from the task repository and mistake that repository's diff for the implementation diff. Until cross-repository CLI support exists, collect the equivalent `<base>...HEAD` Git context in the implementation repository and combine it with the active task documents from the task repository.
+The current `review-context` command performs automatic task discovery only when tasks and code share a repository. In split-repository mode, do not run it from the task repository and mistake that repository's diff for the implementation diff. Until cross-repository CLI support exists, collect the equivalent `<base>...HEAD` Git context in the implementation repository, combine it with the active task documents from the task repository, and construct collision-safe task-local report paths in the task repository using the same timestamp rules.
 
 ### Independent Git Boundaries
 
@@ -363,10 +363,11 @@ Examples:
 3. Discover every task and implementation plan associated with the branch
 4. Review each task independently for task alignment, plan alignment, and engineering quality
 5. Perform a final PR-level review
-6. Return standardized findings and an overall verdict
-7. Keep human review as the final approval before merge
+6. Write a new timestamped report for each reviewed task
+7. Return standardized findings and an overall verdict
+8. Keep human review as the final approval before merge
 
-AI Code Review is read-only for implementation artifacts. It may create or update only the standardized AI-owned review report under `workflow/reviews/`. A request to review code does not authorize modifying code, task files, plans, commits, branches, pull requests, or merge state. Fixes should only be implemented when the user separately requests them.
+AI Code Review is read-only for implementation artifacts. It may create only new AI-owned reports under each reviewed task's `reviews/` directory. A request to review code does not authorize modifying code, task files, plans, previous review reports, commits, branches, pull requests, or merge state. Fixes should only be implemented when the user separately requests them.
 
 The review workflow applies whether the implementation was written manually or with any AI or development tool.
 
@@ -440,7 +441,11 @@ The base may be omitted when it can be detected safely:
 npx ailovecode-workflow review-context
 ```
 
-The context command collects review inputs and prints the standardized review-report path. It does not perform the review, write the report, or determine the verdict.
+The context command collects review inputs and prints one standardized task-local review-report path per discovered task. It does not perform the review, create directories, write reports, or determine verdicts. Use `--json` when structured context and task-to-report-path mappings are needed:
+
+```bash
+npx ailovecode-workflow review-context <base> --json
+```
 
 ### Base Branch
 
@@ -469,7 +474,7 @@ Collect:
 
 Do not assume that a single PR contains only one task.
 
-Exclude `workflow/reviews/**` from changed-file discovery and the complete branch diff. Generated review reports are outputs of the review process and must not affect later findings or verdicts.
+Exclude both `workflow/reviews/**` files and task-local `workflow/tasks/*/reviews/**` files from changed-file discovery and the complete branch diff. Generated review reports are outputs of the review process and must not affect later task discovery, findings, or verdicts.
 
 ### Task Discovery
 
@@ -596,30 +601,73 @@ The overall verdict is the most severe applicable status across every task and t
 
 ### Review Report
 
-After completing the review, create or update the report path printed by `review-context`:
+After completing the review, create a new report at each task-local path printed by `review-context`. In split-repository mode, construct the equivalent path in the workflow task repository because automatic cross-repository discovery is not yet available:
 
 ```text
-workflow/reviews/<branch-slug>.md
+workflow/tasks/<task-id>/reviews/YYYYMMDDTHHMMSS.md
 ```
 
 Rules:
 
-* Convert the full branch name to lowercase kebab-case; for example, `feature/add-code-review` becomes `feature-add-code-review`.
-* For detached HEAD, use `detached-<12-character-commit>.md`.
-* Create `workflow/reviews/` when it does not exist.
-* Write the same standardized review shown to the user into the report.
-* Include the base, head branch, reviewed commit, review timestamp, and discovered task paths in report metadata.
-* On rerun, replace the existing branch report so it represents the current reviewed commit; do not append another review to the same file.
-* Treat the report as AI-owned generated output. Do not place it inside an individual task directory because one PR may implement multiple tasks.
+* Use local time and the seconds-level `YYYYMMDDTHHMMSS` timestamp shown by `review-context`.
+* Do not add verdicts or redundant prefixes to filenames.
+* If that timestamp already exists for a task, use the collision-safe path printed by `review-context`, such as `YYYYMMDDTHHMMSS-02.md`.
+* Create the task's `reviews/` directory only when writing its first completed review.
+* Never replace an earlier review; every iteration remains a separate file.
+* Include the task identifier/path, base, head branch, reviewed commit, and review timestamp in report metadata.
+* Store only that task's alignment statuses, engineering status, findings, and task verdict in its report.
+* Return cross-task and PR-level findings in the aggregate user response; do not duplicate them into unrelated task reports or create a global report for them.
+* Treat reports as AI-owned generated output.
 * Do not modify any other file as part of review.
-* Do not commit, push, post, approve, or merge the report unless the user separately requests that action.
+* Do not commit, push, post, approve, or merge reports unless the user separately requests that action.
 * If the user explicitly requests no file write, return the review without creating or updating the report.
 
-The report write does not change the review verdict. If the report cannot be written, return the full review to the user and state the persistence error separately.
+New reviews must use task-local paths. The latest task review is the newest timestamped filename; do not create `latest.md`.
+
+Report writes do not change review verdicts. If a report cannot be written, return the full review to the user and state the persistence error separately.
+
+### Task Review File
+
+Use this structure for each persisted task report:
+
+```md
+# AI Love Code - Task Review
+
+## Metadata
+
+- Task: <task path>
+- Base: <base>
+- Head: <branch>
+- Commit: <full commit hash>
+- Reviewed at: <ISO 8601 timestamp>
+
+## Task Alignment
+
+PASS | WARNING | CHANGES REQUESTED
+
+## Plan Alignment
+
+PASS | WARNING | CHANGES REQUESTED
+
+## Engineering
+
+PASS | WARNING | CHANGES REQUESTED
+
+## Findings
+
+- HIGH - Finding title (`path/to/file:line`)
+  Concrete impact and remediation direction.
+
+## Overall Verdict
+
+PASS | WARNING | CHANGES REQUESTED
+```
+
+Omit an empty finding list or write `No actionable findings.`
 
 ### Standard Review Output
 
-Use this structure:
+Use this aggregate structure in the response to the user:
 
 ```md
 # AI Love Code - PR Review
