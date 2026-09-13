@@ -116,6 +116,18 @@ test("configures split repositories with one managed tag", (t) => {
     assert.match(content, /Implementation repository:/);
     assert.ok(content.includes(`\`${implementationRepository}\``));
     assert.ok(content.includes(`\`${taskRepository}\``));
+    assert.match(
+      content,
+      /workflow-task cleanup as separate repository operations/
+    );
+    assert.match(
+      content,
+      /does not own `workflow\/tasks\/`/
+    );
+    assert.match(
+      content,
+      /authorization for commit, push, PR, merge, or cleanup in one does not authorize actions in the other/
+    );
   }
 
   const agents = fs.readFileSync(

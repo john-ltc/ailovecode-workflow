@@ -103,7 +103,10 @@ test("collects explicit-base context for multiple tasks", (t) => {
   );
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /# AI Love Code - Review Context/);
+  assert.match(
+    result.stdout,
+    /# AI Love Code - Developer Task Review Context/
+  );
   assert.match(result.stdout, /- Base: `main`/);
   assert.match(result.stdout, /- Head branch: `feature\/review`/);
   const reportPaths = [
@@ -413,6 +416,7 @@ test("existing commands remain available", (t) => {
     help.stdout,
     /configure-dev "implementation repository"/
   );
+  assert.match(help.stdout, /list-tasks \[--all \| --completed\]/);
   assert.match(help.stdout, /review-context \[base\]/);
   assert.equal(version.status, 0, version.stderr);
   assert.match(version.stdout, /AILoveCode Workflow v1\.0\.0/);

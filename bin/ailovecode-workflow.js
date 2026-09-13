@@ -470,6 +470,167 @@ function createTask() {
   );
 }
 
+function listTasksArguments() {
+  let mode = "active";
+  let json = false;
+
+  for (const argument of process.argv.slice(3)) {
+    if (argument === "--json") {
+      json = true;
+      continue;
+    }
+
+    if (argument === "--all" || argument === "--completed") {
+      const requestedMode = argument === "--all" ? "all" : "completed";
+
+      if (mode !== "active") {
+        console.error("list-tasks accepts only one of --all or --completed.");
+        process.exit(1);
+      }
+
+      mode = requestedMode;
+      continue;
+    }
+
+    console.error(`Unknown list-tasks option: ${argument}`);
+    process.exit(1);
+  }
+
+  return { mode, json };
+}
+
+function activeTasks() {
+  const tasksPath = path.join(targetWorkflow, "tasks");
+
+  if (!fs.existsSync(targetWorkflow) || !fs.existsSync(tasksPath)) {
+    console.error("workflow/tasks folder not found.");
+    console.error("Run this first: npx ailovecode-workflow init");
+    process.exit(1);
+  }
+
+  return fs
+    .readdirSync(tasksPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+}
+
+function historicalTasks(active) {
+  const repositoryCheck = git([
+    "rev-parse",
+    "--is-inside-work-tree",
+  ]);
+
+  if (
+    repositoryCheck.error ||
+    repositoryCheck.status !== 0 ||
+    repositoryCheck.stdout.trim() !== "true"
+  ) {
+    console.error(
+      "Historical tasks cannot be determined outside a Git worktree."
+    );
+    process.exit(1);
+  }
+
+  const reachableCommit = git([
+    "rev-list",
+    "--all",
+    "--max-count=1",
+  ]);
+
+  if (
+    reachableCommit.error ||
+    reachableCommit.status !== 0 ||
+    !reachableCommit.stdout.trim()
+  ) {
+    console.error(
+      "Historical tasks cannot be determined because no reachable Git history is available."
+    );
+    process.exit(1);
+  }
+
+  const history = gitOutput(
+    [
+      "log",
+      "--all",
+      "--name-only",
+      "--format=",
+      "--",
+      "workflow/tasks",
+    ],
+    "Unable to inspect reachable Git history for workflow tasks."
+  );
+  const activeSet = new Set(active);
+  const historical = new Set();
+
+  for (const line of history.split(/\r?\n/)) {
+    const normalized = line.trim().replace(/\\/g, "/");
+    const match = normalized.match(/^workflow\/tasks\/([^/]+)\//);
+
+    if (match && !activeSet.has(match[1])) {
+      historical.add(match[1]);
+    }
+  }
+
+  return [...historical].sort();
+}
+
+function taskEntries(tasks) {
+  return tasks.map((task) => ({ task }));
+}
+
+function textTaskSection(title, underline, tasks) {
+  return [
+    title,
+    underline,
+    ...(tasks.length ? tasks : ["No tasks found."]),
+  ].join("\n");
+}
+
+function listTasks() {
+  const options = listTasksArguments();
+  const active = activeTasks();
+  const completed = options.mode === "active"
+    ? []
+    : historicalTasks(active);
+
+  if (options.json) {
+    console.log(JSON.stringify({
+      active: options.mode === "completed" ? [] : taskEntries(active),
+      completed: options.mode === "active" ? [] : taskEntries(completed),
+    }, null, 2));
+    return;
+  }
+
+  if (options.mode === "active") {
+    console.log([
+      "Active Tasks",
+      "",
+      ...(active.length ? active : ["No tasks found."]),
+    ].join("\n"));
+    return;
+  }
+
+  if (options.mode === "completed") {
+    console.log(textTaskSection(
+      "Completed / Historical",
+      "----------------------",
+      completed
+    ));
+    return;
+  }
+
+  console.log([
+    textTaskSection("Active", "------", active),
+    "",
+    textTaskSection(
+      "Completed / Historical",
+      "----------------------",
+      completed
+    ),
+  ].join("\n"));
+}
+
 function git(args) {
   return spawnSync("git", args, {
     cwd: targetRoot,
@@ -768,7 +929,7 @@ function reviewContext() {
   }
 
   const sections = [
-    "# AI Love Code - Review Context",
+    "# AI Love Code - Developer Task Review Context",
     "",
     "## Repository",
     "",
@@ -845,6 +1006,7 @@ Usage:
   npx ailovecode-workflow update
   npx ailovecode-workflow configure-dev "implementation repository"
   npx ailovecode-workflow create-task "task name"
+  npx ailovecode-workflow list-tasks [--all | --completed] [--json]
   npx ailovecode-workflow review-context [base] [--json]
   npx ailovecode-workflow version
 
@@ -870,6 +1032,10 @@ switch (command) {
 
   case "create-task":
     createTask();
+    break;
+
+  case "list-tasks":
+    listTasks();
     break;
 
   case "review-context":

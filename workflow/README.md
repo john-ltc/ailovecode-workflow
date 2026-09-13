@@ -1,258 +1,145 @@
 # AILoveCode Workflow
 
-This project uses AILoveCode Workflow for AI-assisted software development.
+This project uses a lightweight, file-based workflow for AI-assisted development. The detailed behavior and permission rules are in `guidelines.md`.
 
-## Quick Start
+## Core Files
 
-The development workflow uses these prompts and review steps:
+- `task.md` — user-owned source of truth; AI does not modify it unless explicitly requested.
+- `implementation-plan.md` — planning, decisions, testing, and progress; AI updates it only after an explicit planning request.
+- `supporting-materials/` — task-local references.
+- `reviews/` — timestamped Developer Task Review reports created only when reviews are completed.
 
-### 1. Create Task
-
-```text
-Create task "new-task"
-```
-
-Example:
-
-```text
-Create task "add appointment booking"
-```
-
-### 2. Understand the Task
-
-```text
-Understand the task.
-```
-
-### 3. Create Implementation Plan
-
-```text
-Create an implementation plan for this task.
-```
-
-### 4. Implement the Plan
-
-```text
-Implement the plan.
-```
-
-### 5. Create a Pull Request
-
-Create a pull request from the implementation branch into its intended base branch.
-
-### 6. Review the Pull Request
-
-```text
-Review this PR.
-```
-
-The AI should collect the branch context with:
+## Commands
 
 ```bash
-npx ailovecode-workflow review-context <base>
+npx ailovecode-workflow create-task "task name"
+npx ailovecode-workflow list-tasks [--all | --completed] [--json]
+npx ailovecode-workflow review-context [base] [--json]
 ```
 
-For example:
+Use official commands first. Manual filesystem or Git inspection is a fallback when a command is unavailable or fails.
+
+### List Tasks
+
+```bash
+npx ailovecode-workflow list-tasks
+npx ailovecode-workflow list-tasks --all
+npx ailovecode-workflow list-tasks --completed
+npx ailovecode-workflow list-tasks --all --json
+```
+
+The default view lists current task folders. `--all` includes historical folders found in reachable Git history; `--completed` shows only that historical-path view. Historical means “previously committed and absent from the current tree,” not verified completion or merge. Results preserve full folder names and are sorted deterministically. Listing is read-only.
+
+### Developer Task Review Context
 
 ```bash
 npx ailovecode-workflow review-context main
+npx ailovecode-workflow review-context main --json
 ```
 
-The base may be omitted when the remote default, `main`, or `master` can be detected safely.
-
-### 7. Human Review and Merge
-
-The AI saves one timestamped report under each reviewed task's `reviews/` directory, then returns the aggregate result for final human review. It does not approve or merge the pull request.
-
-The AI should follow the rules defined in `guidelines.md` throughout the process.
-
----
-
-## Split-Repository Workflow
-
-When tasks belong in this repository but implementation belongs in another Git repository, configure an explicit target:
-
-```bash
-npx ailovecode-workflow configure-dev "path/to/implementation-project"
-```
-
-The command writes one managed `<workflow-dev>` block to `AGENTS.md` and `CLAUDE.md`. It records the absolute workflow task and implementation repository paths and may be rerun safely to change the target.
-
-Responsibilities are split as follows:
-
-```text
-Workflow task repository
-├── task.md
-├── implementation-plan.md
-├── supporting-materials/
-└── task-local reviews/
-
-Implementation repository
-├── source code
-├── implementation tests
-├── builds and validation
-└── implementation Git history
-```
-
-Before target work, the AI reads repository-specific instructions and checks branch/worktree state in both repositories. It does not install workflow files in the implementation repository or commit/push either repository without explicit permission.
-
-For split-repository review, the AI combines the target repository's `<base>...HEAD` diff with each active task and plan from this repository, then saves each review report in its task directory here. Automatic cross-repository `review-context` discovery is not part of the first version.
-
----
-
-## Important Files
-
-### guidelines.md
-
-Workflow rules and AI behavior guidelines.
-
-### task.md
-
-User-owned source of truth.
-
-May contain:
-
-* requirements
-* issues
-* notes
-* screenshots
-* copied discussions
-* implementation requests
-
-Core rule:
-
-```text
-Do not modify task.md unless explicitly requested.
-```
-
-### implementation-plan.md
-
-AI-owned implementation workspace.
-
-May contain:
-
-* implementation planning
-* architecture notes
-* technical decisions
-* testing plans
-* progress tracking
-
-### supporting-materials
-
-Task-related references.
-
-Examples:
-
-* screenshots
-* logs
-* request payloads
-* response payloads
-* recordings
-* exported files
-* copied discussions
-
-### reviews
-
-AI-owned task review history stored under `workflow/tasks/<task-id>/reviews/`. Each review creates a new timestamped Markdown file. The AI may create a report during review but should not modify previous reports or other workflow and implementation files without a separate request.
-
----
-
-## Recommended Workflow
-
-```text
-Create Task
-    ↓
-Write task.md
-    ↓
-Understand the task
-    ↓
-Create implementation plan
-    ↓
-Implement the plan
-    ↓
-Create PR
-    ↓
-AI Code Review
-    ↓
-Human Review
-    ↓
-Merge
-```
-
-For larger features, AI may provide a Development Checkpoint when there is something meaningful to test.
-
----
-
-## AI Code Review
-
-AI Code Review checks the complete `<base>...HEAD` branch diff against the task and plan that describe the intended change.
-
-For every discovered task, the review reports:
-
-* Task Alignment
-* Plan Alignment
-* Engineering
-
-It then reports PR-level concerns such as cross-task conflicts, unrelated changes, or excessive scope. Findings use Critical, High, Medium, or Low severity. The overall verdict is PASS, WARNING, or CHANGES REQUESTED.
-
-`task.md` remains the highest authority. A reasonable deviation from `implementation-plan.md` is not automatically a defect, but meaningful deviations should be explained or reflected in the plan.
-
-Review mode is read-only for implementation, task, plan, and previous report files. Its only automatic writes are new task-local AI-owned reports. Asking for a review does not authorize fixes, commits, pushes, PR updates, approval, or merge operations.
-
-### Review Report
-
-Each reviewed task receives a new report:
+The command collects `<base>...HEAD` context and task-to-report-path mappings. It does not perform a review or write a file. Developer Task Review reports remain under:
 
 ```text
 workflow/tasks/<task-id>/reviews/YYYYMMDDTHHMMSS.md
 ```
 
-For example:
+## Roles
+
+- **Developer** — understand, plan, implement, validate, perform Developer Task Review, commit/push, create PRs, and prepare PR summaries.
+- **Reviewer** — independently review actual pull requests.
+- **Maintainer / Approver** — authorize and perform final integration and destructive task cleanup.
+
+Developer Task Review asks: “Did we implement the task correctly?” Its reports are task-local.
+
+PR Review asks: “Is this pull request safe to merge?” It is read-only/private by default. It is submitted to the PR provider only when explicitly requested and is never stored in the task-local `reviews/` directory.
+
+## Permission Rules
+
+Commit, push, PR creation, PR-review submission, approval, request changes, PR merge, direct branch merge, and destructive cleanup require explicit user intent. One action never authorizes a later action or the same action in another repository.
+
+## PR Flow
 
 ```text
-workflow/tasks/20260901T2100_add-code-review/reviews/20260901T230047.md
+Developer
+Create Task → Understand → Plan → Implement → Validate
+→ Developer Task Review → Commit/Push → Create PR → PR Summary
+
+Reviewer
+PR Review (read-only) → optionally submit when explicitly requested
+
+Maintainer / Approver
+Explicit merge authorization → final checks
+→ same-repository task cleanup and cleanup commit/push
+→ re-check → merge PR
 ```
 
-The report contains the task identifier, base, branch, reviewed commit, timestamp, task alignment, plan alignment, engineering findings, and task verdict. A rerun creates another file; if the seconds-level timestamp already exists, use the collision suffix printed by `review-context`. The newest timestamped filename is the latest review; no duplicated `latest.md` is created. Cross-task and PR-level findings stay in the aggregate response. The AI does not commit or push reports unless explicitly requested.
+Keep the task folder while the PR is open. Cleanup occurs only at final integration, after explicit authorization and preservation checks. Re-check before destructive and final steps. If cleanup succeeds but merge fails, report partial completion and do not claim integration succeeded.
 
-### Review Context Discovery
+## Direct-Merge Flow
 
-The official command collects review inputs without invoking an AI provider:
+```text
+Developer
+Create Task → Understand → Plan → Implement → Validate
+→ Developer Task Review → Commit/Push
+
+Maintainer / Approver
+Explicit direct-merge authorization → repository-policy and final checks
+→ same-repository task cleanup and cleanup commit/push
+→ re-check → merge source into target → push target as authorized
+```
+
+Do not direct-merge when repository policy requires a PR. Direct flow has no PR summary, conversation, or PR Review history.
+
+## Split-Repository Workflow
+
+Configure a separate implementation repository from the workflow task repository:
 
 ```bash
-npx ailovecode-workflow review-context [base] [--json]
+npx ailovecode-workflow configure-dev "path/to/implementation-project"
 ```
 
-It discovers task directories when `task.md` or `implementation-plan.md` changed in the branch. When only one document changed, both available documents from that directory are included. Multiple task directories remain separate.
+The workflow task repository owns tasks, plans, supporting materials, Developer Task Review reports, and task cleanup. The implementation repository owns source, tests, validation, implementation Git history, and its PR/direct merge.
 
-The default output identifies one report path per discovered task. `--json` returns the same repository context, task documents, diff, and task-to-output-path mappings as structured JSON. Files under both `workflow/reviews/**` and task-local `workflow/tasks/*/reviews/**` paths are excluded from changed-file discovery and the branch diff so earlier reports cannot affect a later review. The command does not create review directories or files.
+Implementation integration and workflow-task cleanup are separate operations:
 
-If no task documents are discovered, the AI checks PR metadata, branch context, and commit messages before asking the user which task the PR implements.
+1. Complete and verify the implementation integration under that repository's policy and explicit authorization.
+2. Do not delete or manufacture a task folder in an implementation repository that does not own it.
+3. With separate explicit authorization, re-check the task repository, committed history, task association, and integration result.
+4. Delete, commit, push, and integrate cleanup according to the workflow repository's own policy and authorization.
+5. Report both repositories' results independently.
 
----
+For split Developer Task Review, collect the implementation diff in the implementation repository and combine it with the task/plan in the workflow repository. `review-context` does not automatically combine repositories.
 
-## Recommended task.md Template
+## Legacy Cleanup
 
-```md
-## Context
+Legacy cleanup is explicit and conservative:
 
-## Request
+1. Identify an exact task using its full folder name.
+2. Assess whether it appears completed, superseded, or still active.
+3. Verify committed task, plan, review, and supporting-material history remains reachable.
+4. Detect ignored, untracked, or uncommitted-only files that Git cannot recover.
+5. Verify related integration when possible and present uncertainty.
+6. Present the cleanup assessment before deletion.
+7. Delete only after explicit authorization and commit the deletion.
 
-## Reference
+Do not silently bundle unrelated tasks or remove uncertain candidates.
+
+## Historical Context
+
+```text
+Current workflow/tasks/ = active or still-relevant working context
+PR description         = Developer's final summary
+Git history            = reachable committed task/plan/review context
+PR conversation        = submitted PR Review history
 ```
 
-Example:
+Deleted artifacts are recoverable only when committed and still reachable. Historical task discovery does not prove successful completion. No archive directory or provider-specific merge strategy is required, but agents should warn when a strategy can make historical artifacts harder to trace.
 
-```md
-## Context
+## Recommended Task Lifecycle
 
-I'm facing an issue where the Telegram preview displays unexpected spacing at the top when scrolling down on the campaign edit page.
-
-## Request
-
-Investigate the root cause and remove the extra spacing.
-
-## Reference
-
-supporting-materials/image.png
+```text
+Create Task → Write task.md → Understand → Plan → Implement → Validate
+→ Developer Task Review → explicit Git/integration actions → final cleanup
 ```
+
+For larger features, the AI may provide a Development Checkpoint when there is something meaningful to test.
