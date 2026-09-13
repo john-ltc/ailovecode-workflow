@@ -28,7 +28,11 @@ npx ailovecode-workflow list-tasks --completed
 npx ailovecode-workflow list-tasks --all --json
 ```
 
-The default view lists current task folders. `--all` includes historical folders found in reachable Git history; `--completed` shows only that historical-path view. Historical means “previously committed and absent from the current tree,” not verified completion or merge. Results preserve full folder names and are sorted deterministically. Listing is read-only.
+The default view lists Active task folders. `--all` shows Active, Deleted Pending Commit, Deleted Pending Push, and Historical sections. `--completed` shows all three non-active sections; it is a task-folder lifecycle view and does not prove implementation completion or merge.
+
+JSON always contains separate `active`, `deleted_pending_commit`, `deleted_pending_push`, and `historical` arrays. The previous `completed` field is intentionally removed. Results preserve full folder names and are sorted deterministically.
+
+Listing is read-only and never fetches. Historical means the deletion commit is reachable from the configured upstream's locally available ref. With no usable upstream, committed deletions remain Deleted Pending Push and the command warns that push state cannot be confirmed. Fetch separately when fresher remote knowledge is required.
 
 ### Developer Task Review Context
 
@@ -133,7 +137,7 @@ Git history            = reachable committed task/plan/review context
 PR conversation        = submitted PR Review history
 ```
 
-Deleted artifacts are recoverable only when committed and still reachable. Historical task discovery does not prove successful completion. No archive directory or provider-specific merge strategy is required, but agents should warn when a strategy can make historical artifacts harder to trace.
+Deleted artifacts are recoverable only when committed and still reachable. Historical task status reflects locally known upstream reachability and does not prove successful implementation or merge. No archive directory or provider-specific merge strategy is required, but agents should warn when a strategy can make historical artifacts harder to trace.
 
 ## Recommended Task Lifecycle
 

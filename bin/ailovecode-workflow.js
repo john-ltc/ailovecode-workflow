@@ -515,7 +515,7 @@ function activeTasks() {
     .sort();
 }
 
-function historicalTasks(active) {
+function ensureTaskHistory() {
   const repositoryCheck = git([
     "rev-parse",
     "--is-inside-work-tree",
@@ -527,15 +527,16 @@ function historicalTasks(active) {
     repositoryCheck.stdout.trim() !== "true"
   ) {
     console.error(
-      "Historical tasks cannot be determined outside a Git worktree."
+      "Task lifecycle states cannot be determined outside a Git worktree."
     );
     process.exit(1);
   }
 
   const reachableCommit = git([
-    "rev-list",
-    "--all",
-    "--max-count=1",
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    "HEAD^{commit}",
   ]);
 
   if (
@@ -544,11 +545,13 @@ function historicalTasks(active) {
     !reachableCommit.stdout.trim()
   ) {
     console.error(
-      "Historical tasks cannot be determined because no reachable Git history is available."
+      "Task lifecycle states cannot be determined because no reachable Git history is available."
     );
     process.exit(1);
   }
+}
 
+function knownTasks() {
   const history = gitOutput(
     [
       "log",
@@ -560,29 +563,185 @@ function historicalTasks(active) {
     ],
     "Unable to inspect reachable Git history for workflow tasks."
   );
-  const activeSet = new Set(active);
-  const historical = new Set();
+  const tasks = new Set();
 
   for (const line of history.split(/\r?\n/)) {
     const normalized = line.trim().replace(/\\/g, "/");
     const match = normalized.match(/^workflow\/tasks\/([^/]+)\//);
 
-    if (match && !activeSet.has(match[1])) {
-      historical.add(match[1]);
+    if (match) {
+      tasks.add(match[1]);
     }
   }
 
-  return [...historical].sort();
+  return [...tasks].sort();
+}
+
+function taskPathspec(task) {
+  return `:(literal)workflow/tasks/${task}`;
+}
+
+function taskExistsAt(ref, task) {
+  const result = git([
+    "ls-tree",
+    "-r",
+    "--name-only",
+    ref,
+    "--",
+    taskPathspec(task),
+  ]);
+
+  return !result.error &&
+    result.status === 0 &&
+    Boolean(result.stdout.trim());
+}
+
+function isAncestor(commit, ref) {
+  const result = git([
+    "merge-base",
+    "--is-ancestor",
+    commit,
+    ref,
+  ]);
+
+  if (result.error || (result.status !== 0 && result.status !== 1)) {
+    const detail = result.error
+      ? result.error.message
+      : (result.stderr || result.stdout || "").trim();
+
+    console.error(
+      "Unable to compare task deletion with the configured upstream."
+    );
+
+    if (detail) {
+      console.error(detail);
+    }
+
+    process.exit(1);
+  }
+
+  return result.status === 0;
+}
+
+function fullDeletionCommit(task, ref) {
+  const result = git([
+    "log",
+    "--full-history",
+    "--format=%H",
+    "--diff-filter=D",
+    ref,
+    "--",
+    taskPathspec(task),
+  ]);
+
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  for (const commit of result.stdout.split(/\r?\n/).filter(Boolean)) {
+    if (!taskExistsAt(commit, task)) {
+      return commit;
+    }
+  }
+
+  return null;
+}
+
+function configuredUpstream() {
+  const result = git([
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{upstream}",
+  ]);
+
+  if (result.error || result.status !== 0) {
+    return { ref: null, reason: "no upstream is configured" };
+  }
+
+  const ref = result.stdout.trim();
+  const verification = git([
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${ref}^{commit}`,
+  ]);
+
+  if (!ref || verification.error || verification.status !== 0) {
+    return {
+      ref: null,
+      reason: `configured upstream '${ref}' is not available locally`,
+    };
+  }
+
+  return { ref, reason: null };
+}
+
+function taskLifecycle(active) {
+  ensureTaskHistory();
+
+  const activeSet = new Set(active);
+  const deletedPendingCommit = [];
+  const committedDeletions = [];
+
+  for (const task of knownTasks()) {
+    if (activeSet.has(task)) {
+      continue;
+    }
+
+    if (taskExistsAt("HEAD", task)) {
+      deletedPendingCommit.push(task);
+      continue;
+    }
+
+    const deletionCommit = fullDeletionCommit(task, "HEAD") ||
+      fullDeletionCommit(task, "--all");
+
+    if (deletionCommit) {
+      committedDeletions.push({ task, deletionCommit });
+    }
+  }
+
+  const upstream = configuredUpstream();
+  const deletedPendingPush = [];
+  const historical = [];
+
+  for (const deletion of committedDeletions) {
+    if (
+      upstream.ref &&
+      isAncestor(deletion.deletionCommit, upstream.ref)
+    ) {
+      historical.push(deletion.task);
+    } else {
+      deletedPendingPush.push(deletion.task);
+    }
+  }
+
+  if (!upstream.ref && committedDeletions.length) {
+    console.error(
+      `Push state cannot be confirmed because ${upstream.reason}; ` +
+      "committed deletions are shown as Deleted Pending Push."
+    );
+  }
+
+  return {
+    active,
+    deleted_pending_commit: deletedPendingCommit.sort(),
+    deleted_pending_push: deletedPendingPush.sort(),
+    historical: historical.sort(),
+  };
 }
 
 function taskEntries(tasks) {
   return tasks.map((task) => ({ task }));
 }
 
-function textTaskSection(title, underline, tasks) {
+function textTaskSection(title, description, tasks) {
   return [
     title,
-    underline,
+    "-".repeat(title.length),
+    description,
+    "",
     ...(tasks.length ? tasks : ["No tasks found."]),
   ].join("\n");
 }
@@ -590,45 +749,67 @@ function textTaskSection(title, underline, tasks) {
 function listTasks() {
   const options = listTasksArguments();
   const active = activeTasks();
-  const completed = options.mode === "active"
-    ? []
-    : historicalTasks(active);
+  const lifecycle = options.mode === "active"
+    ? {
+      active,
+      deleted_pending_commit: [],
+      deleted_pending_push: [],
+      historical: [],
+    }
+    : taskLifecycle(active);
+
+  if (options.mode === "completed") {
+    lifecycle.active = [];
+  }
 
   if (options.json) {
-    console.log(JSON.stringify({
-      active: options.mode === "completed" ? [] : taskEntries(active),
-      completed: options.mode === "active" ? [] : taskEntries(completed),
-    }, null, 2));
+    console.log(JSON.stringify(Object.fromEntries(
+      Object.entries(lifecycle).map(([status, tasks]) => [
+        status,
+        taskEntries(tasks),
+      ])
+    ), null, 2));
     return;
   }
 
   if (options.mode === "active") {
-    console.log([
-      "Active Tasks",
-      "",
-      ...(active.length ? active : ["No tasks found."]),
-    ].join("\n"));
-    return;
-  }
-
-  if (options.mode === "completed") {
     console.log(textTaskSection(
-      "Completed / Historical",
-      "----------------------",
-      completed
+      "Active",
+      "Task folder exists.",
+      lifecycle.active
     ));
     return;
   }
 
-  console.log([
-    textTaskSection("Active", "------", active),
-    "",
-    textTaskSection(
-      "Completed / Historical",
-      "----------------------",
-      completed
-    ),
-  ].join("\n"));
+  const sections = [
+    [
+      "Deleted Pending Commit",
+      "Deleted from working tree, not committed.",
+      lifecycle.deleted_pending_commit,
+    ],
+    [
+      "Deleted Pending Push",
+      "Deletion committed locally, not pushed.",
+      lifecycle.deleted_pending_push,
+    ],
+    [
+      "Historical",
+      "Deletion committed and pushed.",
+      lifecycle.historical,
+    ],
+  ];
+
+  if (options.mode === "all") {
+    sections.unshift([
+      "Active",
+      "Task folder exists.",
+      lifecycle.active,
+    ]);
+  }
+
+  console.log(sections.map((section) =>
+    textTaskSection(...section)
+  ).join("\n\n"));
 }
 
 function git(args) {

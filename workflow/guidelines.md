@@ -489,9 +489,9 @@ If completion or preservation cannot be verified, leave the task untouched. Neve
 
 ### Historical Meaning and Reachability
 
-Current `workflow/tasks/` represents active or still-relevant working context. A historical task means only that its folder appeared in reachable Git history and is absent from the current tree. It does not prove successful completion, review, or merge.
+Current `workflow/tasks/` represents active or still-relevant working context. A historical task means its folder deletion is committed and the deletion commit is reachable from the configured upstream's locally available ref. It does not prove successful completion, review, or merge.
 
-Git can recover deleted artifacts only if they were committed and the relevant commits remain reachable. Ignored or uncommitted files are not recoverable from Git. Do not mandate a provider-specific merge strategy, but warn when a selected strategy may make intermediate task artifacts or cleanup commits harder to trace. Do not add an archive directory solely to retain completed tasks.
+The listing command does not fetch. Its upstream result may be stale until the user fetches separately. With no configured or locally resolvable upstream, a committed deletion remains Deleted Pending Push because push state cannot be confirmed. Git can recover deleted artifacts only if they were committed and the relevant commits remain reachable. Ignored or uncommitted files are not recoverable from Git. Do not mandate a provider-specific merge strategy, but warn when a selected strategy may make intermediate task artifacts or cleanup commits harder to trace. Do not add an archive directory solely to retain completed tasks.
 
 ---
 
@@ -509,13 +509,19 @@ npx ailovecode-workflow list-tasks --all --json
 Rules:
 
 * Default output lists immediate directories currently under `workflow/tasks/` as active tasks.
-* `--all` lists active and historical task-folder names.
-* `--completed` lists the historical section only; “completed” is a view name and does not prove completion.
-* Historical discovery examines task paths in reachable Git refs and excludes folders still present in the current tree.
+* `--all` lists Active, Deleted Pending Commit, Deleted Pending Push, and Historical task-folder names in explicit sections with short descriptions.
+* `--completed` lists all three non-active states. It is only a task-folder lifecycle view and does not prove implementation completion, review, or merge.
+* Active means the task folder exists in the working tree.
+* Deleted Pending Commit means the folder is absent from the working tree but its deletion is not committed.
+* Deleted Pending Push means the deletion is committed locally but its commit is not reachable from the locally known configured upstream ref.
+* Historical means the deletion commit is reachable from the locally known configured upstream ref.
 * Full folder names are preserved exactly, de-duplicated, and sorted deterministically.
-* JSON contains `active` and `completed` arrays of `{ "task": "<full-folder-name>" }` objects without invented metadata.
-* Active-only listing works from the filesystem. Historical modes must report clearly when no usable Git history exists.
-* The command is read-only. Manual filesystem/Git inspection is a fallback only when the command is unavailable or fails.
+* JSON always contains `active`, `deleted_pending_commit`, `deleted_pending_push`, and `historical` arrays of `{ "task": "<full-folder-name>" }` objects. The old `completed` field is removed rather than retained as an alias.
+* Active-only listing works from the filesystem. History-dependent modes must report clearly when no usable Git history exists.
+* The command is read-only, provider-neutral, and never fetches or otherwise contacts the network.
+* When no usable upstream is configured, committed deletions remain Deleted Pending Push and the command clearly warns that push state cannot be confirmed.
+* Historical reflects locally known upstream state; users must fetch separately when they need current remote knowledge.
+* Manual filesystem/Git inspection is a fallback only when the command is unavailable or fails.
 
 ---
 

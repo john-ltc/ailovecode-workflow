@@ -58,18 +58,27 @@ npx ailovecode-workflow list-tasks --completed
 npx ailovecode-workflow list-tasks --all --json
 ```
 
-The default command lists current task directories. Historical modes inspect task paths across reachable Git refs and exclude folders still in the current tree. “Historical” means only that a committed task path existed and is absent now; it does not prove successful completion or merge.
+The default command lists Active task directories. `--all` shows the complete task-folder lifecycle, and `--completed` shows all three non-active states:
 
-Output is read-only, de-duplicated, lexically sorted, and preserves full task-folder names. JSON uses this stable minimal shape:
+- **Active** - task folder exists.
+- **Deleted Pending Commit** - deleted from the working tree, not committed.
+- **Deleted Pending Push** - deletion committed locally, not pushed.
+- **Historical** - deletion committed and pushed according to the locally known upstream state.
+
+`--completed` is only a task-folder lifecycle view. It does not prove that implementation was completed, reviewed, or merged.
+
+Output is read-only, de-duplicated, lexically sorted, and preserves full task-folder names. JSON always uses four status arrays; the old ambiguous `completed` field has been removed:
 
 ```json
 {
   "active": [{ "task": "20260913T1015_fix-payment-validation" }],
-  "completed": [{ "task": "20260910T2002_m10-end-to-end-validation-restart-recovery" }]
+  "deleted_pending_commit": [],
+  "deleted_pending_push": [],
+  "historical": [{ "task": "20260910T2002_m10-end-to-end-validation-restart-recovery" }]
 }
 ```
 
-Active-only listing does not require Git. Historical modes fail clearly when no usable reachable history exists.
+Active-only listing does not require Git. History-dependent views fail clearly when no usable Git history exists. The command never fetches: it checks the configured upstream's locally available ref. Without a usable upstream, committed deletions remain Deleted Pending Push and the command warns that push state cannot be confirmed. Fetch separately when fresher remote knowledge is required.
 
 ## Roles and Reviews
 
@@ -168,7 +177,7 @@ Use the full task folder name in cleanup metadata:
 chore(workflow): close task 20260910T2002_m10-end-to-end-validation-restart-recovery
 ```
 
-Current `workflow/tasks/` is active working context; Git history is historical context. Deleted files are recoverable only if committed and still reachable. Ignored or uncommitted files are not recoverable from Git. The workflow does not require an archive or provider-specific merge strategy, but some strategies can make intermediate task artifacts or cleanup commits harder to trace.
+Current `workflow/tasks/` is active working context; local Git and upstream reachability determine the remaining task-folder lifecycle states. Historical means the deletion commit is reachable from the locally known configured upstream; it does not prove successful implementation or merge. Deleted files are recoverable only if committed and still reachable. Ignored or uncommitted files are not recoverable from Git. The workflow does not require an archive or provider-specific merge strategy, but some strategies can make intermediate task artifacts or cleanup commits harder to trace.
 
 ## Project Structure
 
