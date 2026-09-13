@@ -116,6 +116,7 @@ npx ailovecode-workflow configure-dev "implementation-repository"
 npx ailovecode-workflow list-tasks
 npx ailovecode-workflow list-tasks --all
 npx ailovecode-workflow list-tasks --completed
+npx ailovecode-workflow show-task <task> --json
 ```
 
 Rules:
@@ -126,7 +127,7 @@ Rules:
 * Do not bypass official workflow commands without a valid reason.
 * If a command fails, explain the failure and proceed with the documented fallback process.
 
-When the user asks to list, show, browse, or inspect tasks, attempt the matching `list-tasks` command first. Use filesystem or Git inspection only if the official command is unavailable or fails.
+When the user asks which tasks exist or requests a task list, attempt the matching `list-tasks` command first. When the user asks to inspect, summarize, explain, revisit, or casually review one specific task, attempt `show-task <task> --json` first. Use filesystem or Git inspection only if the matching official command is unavailable or fails.
 
 ---
 
@@ -522,6 +523,29 @@ Rules:
 * When no usable upstream is configured, committed deletions remain Deleted Pending Push and the command clearly warns that push state cannot be confirmed.
 * Historical reflects locally known upstream state; users must fetch separately when they need current remote knowledge.
 * Manual filesystem/Git inspection is a fallback only when the command is unavailable or fails.
+
+---
+
+## Showing a Task
+
+Use the official command first when a user asks to inspect, summarize, explain, revisit, or casually review one specific task:
+
+```bash
+npx ailovecode-workflow show-task <full-task-folder-name> --json
+```
+
+Rules:
+
+* `show-task` represents the latest current lifecycle, not every historical lifecycle of the name.
+* Active task artifacts are read from the working tree, including untracked and ignored files. Files without a committed representation are marked as not Git-recoverable.
+* Deleted task artifacts are recovered from the most recent committed task package immediately before the current deletion and are never restored into the working tree.
+* Output uses the same Active, Deleted Pending Commit, Deleted Pending Push, and Historical classification as `list-tasks`.
+* JSON has stable top-level `task`, `status`, `artifacts`, and `git` fields. Git facts that cannot be established reliably are `null`.
+* Small practical UTF-8 text content may be included. Binary and large supporting materials return metadata rather than stdout content.
+* The command is deterministic, read-only, provider-neutral, offline, and never fetches or modifies files, the index, or refs.
+* `show-task` retrieves context only. The coding agent performs any requested interpretation or summary.
+* Casual inspection through `show-task` is not Developer Task Review or PR Review. Formal reviews continue to use their dedicated workflows.
+* Manual filesystem or Git-history reconstruction is a fallback only when `show-task` is unavailable or fails.
 
 ---
 

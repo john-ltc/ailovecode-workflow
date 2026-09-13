@@ -14,6 +14,7 @@ This project uses a lightweight, file-based workflow for AI-assisted development
 ```bash
 npx ailovecode-workflow create-task "task name"
 npx ailovecode-workflow list-tasks [--all | --completed] [--json]
+npx ailovecode-workflow show-task <task> [--json]
 npx ailovecode-workflow review-context [base] [--json]
 ```
 
@@ -33,6 +34,19 @@ The default view lists Active task folders. `--all` shows Active, Deleted Pendin
 JSON always contains separate `active`, `deleted_pending_commit`, `deleted_pending_push`, and `historical` arrays. The previous `completed` field is intentionally removed. Results preserve full folder names and are sorted deterministically.
 
 Listing is read-only and never fetches. Historical means the deletion commit is reachable from the configured upstream's locally available ref. With no usable upstream, committed deletions remain Deleted Pending Push and the command warns that push state cannot be confirmed. Fetch separately when fresher remote knowledge is required.
+
+### Show Task
+
+```bash
+npx ailovecode-workflow show-task 20260913T1015_fix-payment-validation
+npx ailovecode-workflow show-task 20260913T1015_fix-payment-validation --json
+```
+
+Use `show-task <task> --json` first when inspecting, summarizing, explaining, revisiting, or casually reviewing a specific task. It returns the latest current lifecycle with stable top-level `task`, `status`, `artifacts`, and `git` fields. Active artifacts come from the working tree; deleted artifacts come from the most recent committed task package immediately before the current deletion.
+
+Small UTF-8 text files up to 256 KiB may include content. Binary and larger files return metadata only. Active untracked and ignored files are included and marked as not Git-recoverable. Unavailable Git metadata is `null`.
+
+The command is read-only, offline, provider-neutral, never fetches, and uses the same lifecycle classification as `list-tasks`. It retrieves context only; interpretation belongs to the coding agent, and formal Developer Task Review remains separate.
 
 ### Developer Task Review Context
 

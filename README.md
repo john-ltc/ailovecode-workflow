@@ -25,6 +25,7 @@ npx ailovecode-workflow update
 npx ailovecode-workflow configure-dev "path/to/implementation-project"
 npx ailovecode-workflow create-task "task name"
 npx ailovecode-workflow list-tasks [--all | --completed] [--json]
+npx ailovecode-workflow show-task <task> [--json]
 npx ailovecode-workflow review-context [base] [--json]
 npx ailovecode-workflow version
 ```
@@ -79,6 +80,21 @@ Output is read-only, de-duplicated, lexically sorted, and preserves full task-fo
 ```
 
 Active-only listing does not require Git. History-dependent views fail clearly when no usable Git history exists. The command never fetches: it checks the configured upstream's locally available ref. Without a usable upstream, committed deletions remain Deleted Pending Push and the command warns that push state cannot be confirmed. Fetch separately when fresher remote knowledge is required.
+
+## Showing a Task
+
+```bash
+npx ailovecode-workflow show-task 20260913T1015_fix-payment-validation
+npx ailovecode-workflow show-task 20260913T1015_fix-payment-validation --json
+```
+
+`show-task` retrieves the latest current lifecycle of one task. Active artifacts come from the working tree, including untracked and ignored files. Deleted tasks are read from the latest committed task package immediately before the current deletion; files are never restored.
+
+JSON has stable top-level `task`, `status`, `artifacts`, and `git` fields. Task and plan content, task-local reviews, and supporting-material metadata are returned when available. UTF-8 text content up to 256 KiB is included; larger or binary files are represented by metadata with `content: null`. Untracked and ignored files are marked as not Git-recoverable, and Git metadata that cannot be established is `null`.
+
+The command is deterministic, read-only, provider-neutral, and offline. It uses the same Active, Deleted Pending Commit, Deleted Pending Push, and Historical classification as `list-tasks`, reads only local Git state, and never fetches.
+
+Use `show-task <task> --json` as the first step when asking a coding agent to inspect, summarize, explain, revisit, or casually review one task. The command retrieves context only: the agent still interprets it, and formal Developer Task Review remains a separate workflow.
 
 ## Roles and Reviews
 

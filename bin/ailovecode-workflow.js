@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const { TextDecoder } = require("util");
 
 const command = process.argv[2];
 
@@ -11,6 +12,8 @@ const targetRoot = process.cwd();
 
 const sourceWorkflow = path.join(packageRoot, "workflow");
 const targetWorkflow = path.join(targetRoot, "workflow");
+
+const showTaskTextLimit = 256 * 1024;
 
 const taskTemplate = `## Context
 
@@ -677,12 +680,13 @@ function configuredUpstream() {
   return { ref, reason: null };
 }
 
-function taskLifecycle(active) {
+function taskLifecycleContext(active) {
   ensureTaskHistory();
 
   const activeSet = new Set(active);
   const deletedPendingCommit = [];
   const committedDeletions = [];
+  const deletionCommits = new Map();
 
   for (const task of knownTasks()) {
     if (activeSet.has(task)) {
@@ -699,6 +703,7 @@ function taskLifecycle(active) {
 
     if (deletionCommit) {
       committedDeletions.push({ task, deletionCommit });
+      deletionCommits.set(task, deletionCommit);
     }
   }
 
@@ -725,11 +730,19 @@ function taskLifecycle(active) {
   }
 
   return {
-    active,
-    deleted_pending_commit: deletedPendingCommit.sort(),
-    deleted_pending_push: deletedPendingPush.sort(),
-    historical: historical.sort(),
+    lifecycle: {
+      active,
+      deleted_pending_commit: deletedPendingCommit.sort(),
+      deleted_pending_push: deletedPendingPush.sort(),
+      historical: historical.sort(),
+    },
+    deletionCommits,
+    upstream,
   };
+}
+
+function taskLifecycle(active) {
+  return taskLifecycleContext(active).lifecycle;
 }
 
 function taskEntries(tasks) {
@@ -810,6 +823,489 @@ function listTasks() {
   console.log(sections.map((section) =>
     textTaskSection(...section)
   ).join("\n\n"));
+}
+
+function showTaskArguments() {
+  let task = null;
+  let json = false;
+
+  for (const argument of process.argv.slice(3)) {
+    if (argument === "--json") {
+      if (json) {
+        console.error("show-task accepts --json only once.");
+        process.exit(1);
+      }
+
+      json = true;
+      continue;
+    }
+
+    if (argument.startsWith("--")) {
+      console.error(`Unknown show-task option: ${argument}`);
+      process.exit(1);
+    }
+
+    if (task) {
+      console.error("show-task accepts exactly one task name.");
+      process.exit(1);
+    }
+
+    task = argument;
+  }
+
+  if (!task) {
+    console.error("Please provide a full task folder name.");
+    console.error(
+      "Example: npx ailovecode-workflow show-task " +
+      "20260913T1638_git-pr-and-task-lifecycle-workflow"
+    );
+    process.exit(1);
+  }
+
+  if (!/^\d{8}T\d{4}_[a-z0-9]+(?:-[a-z0-9]+)*$/.test(task)) {
+    console.error(`Invalid task folder name: ${task}`);
+    console.error("Use the full YYYYMMDDTHHMM_lowercase-kebab-name.");
+    process.exit(1);
+  }
+
+  return { task, json };
+}
+
+function gitCommit() {
+  const result = git([
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    "HEAD^{commit}",
+  ]);
+
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  return result.stdout.trim() || null;
+}
+
+function commitParents(commit) {
+  if (!commit) return [];
+
+  const result = git(["rev-list", "--parents", "-n", "1", commit]);
+
+  if (result.error || result.status !== 0) {
+    return [];
+  }
+
+  return result.stdout.trim().split(/\s+/).slice(1).filter(Boolean);
+}
+
+function recoveryCommitForDeletion(task, deletionCommit) {
+  for (const parent of commitParents(deletionCommit)) {
+    if (taskExistsAt(parent, task)) {
+      return parent;
+    }
+  }
+
+  return null;
+}
+
+function recordedCommitForLifecycle(task, snapshotCommit) {
+  if (!snapshotCommit || !taskExistsAt(snapshotCommit, task)) {
+    return null;
+  }
+
+  let current = snapshotCommit;
+  let recorded = snapshotCommit;
+
+  while (current) {
+    const parent = commitParents(current)[0];
+
+    if (!parent || !taskExistsAt(parent, task)) {
+      return recorded;
+    }
+
+    recorded = parent;
+    current = parent;
+  }
+
+  return recorded;
+}
+
+function commitInfo(commit) {
+  if (!commit) return null;
+
+  const result = git([
+    "show",
+    "-s",
+    "--format=%H%x00%cI%x00%s",
+    commit,
+  ]);
+
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  const [hash, timestampValue, subject] = result.stdout.trimEnd().split("\0");
+
+  if (!hash) return null;
+
+  return {
+    hash,
+    timestamp: timestampValue || null,
+    subject: subject || null,
+  };
+}
+
+function upstreamInfo(upstream) {
+  if (!upstream || !upstream.ref) return null;
+
+  const result = git([
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${upstream.ref}^{commit}`,
+  ]);
+
+  if (result.error || result.status !== 0) return null;
+
+  const commit = result.stdout.trim();
+
+  return commit ? { ref: upstream.ref, commit } : null;
+}
+
+function normalizeArtifactPath(value) {
+  return value.replace(/\\/g, "/");
+}
+
+function lexicalCompare(first, second) {
+  if (first < second) return -1;
+  if (first > second) return 1;
+  return 0;
+}
+
+function textContent(buffer) {
+  if (buffer.length > showTaskTextLimit || buffer.includes(0)) {
+    return { binary: buffer.includes(0), content: null };
+  }
+
+  try {
+    return {
+      binary: false,
+      content: new TextDecoder("utf-8", { fatal: true }).decode(buffer),
+    };
+  } catch {
+    return { binary: true, content: null };
+  }
+}
+
+function missingArtifact(task, relativePath, source) {
+  return {
+    path: `workflow/tasks/${task}/${relativePath}`,
+    available: false,
+    source,
+    size: null,
+    binary: null,
+    tracked: null,
+    ignored: null,
+    git_recoverable: false,
+    content: null,
+  };
+}
+
+function activeGitState(relativePath) {
+  const trackedResult = git(["ls-files", "--error-unmatch", "--", relativePath]);
+  const ignoredResult = git(["check-ignore", "-q", "--", relativePath]);
+  const historyResult = git([
+    "log",
+    "-1",
+    "--format=%H",
+    "--",
+    `:(literal)${relativePath}`,
+  ]);
+  const gitAvailable = !trackedResult.error &&
+    (trackedResult.status === 0 || trackedResult.status === 1) &&
+    !ignoredResult.error &&
+    (ignoredResult.status === 0 || ignoredResult.status === 1);
+
+  if (!gitAvailable) {
+    return { tracked: null, ignored: null, gitRecoverable: false };
+  }
+
+  return {
+    tracked: trackedResult.status === 0,
+    ignored: ignoredResult.status === 0,
+    gitRecoverable: trackedResult.status === 0 &&
+      !historyResult.error &&
+      historyResult.status === 0 &&
+      Boolean(historyResult.stdout.trim()),
+  };
+}
+
+function workingTreeFiles(directory, relativeBase) {
+  const files = [];
+
+  function visit(currentDirectory, currentRelative) {
+    const entries = fs.readdirSync(currentDirectory, { withFileTypes: true })
+      .sort((first, second) => lexicalCompare(first.name, second.name));
+
+    for (const entry of entries) {
+      const filePath = path.join(currentDirectory, entry.name);
+      const relativePath = normalizeArtifactPath(
+        path.posix.join(currentRelative, entry.name)
+      );
+
+      if (entry.isDirectory()) {
+        visit(filePath, relativePath);
+        continue;
+      }
+
+      const stat = fs.lstatSync(filePath);
+      const gitState = activeGitState(relativePath);
+
+      if (entry.isSymbolicLink()) {
+        files.push({
+          path: relativePath,
+          available: true,
+          source: "working_tree",
+          size: stat.size,
+          binary: null,
+          tracked: gitState.tracked,
+          ignored: gitState.ignored,
+          git_recoverable: gitState.gitRecoverable,
+          content: null,
+        });
+        continue;
+      }
+
+      if (!entry.isFile()) continue;
+
+      const buffer = fs.readFileSync(filePath);
+      const decoded = textContent(buffer);
+
+      files.push({
+        path: relativePath,
+        available: true,
+        source: "working_tree",
+        size: buffer.length,
+        binary: decoded.binary,
+        tracked: gitState.tracked,
+        ignored: gitState.ignored,
+        git_recoverable: gitState.gitRecoverable,
+        content: decoded.content,
+      });
+    }
+  }
+
+  visit(directory, relativeBase);
+  return files.sort((first, second) => lexicalCompare(first.path, second.path));
+}
+
+function gitBuffer(args) {
+  return spawnSync("git", args, {
+    cwd: targetRoot,
+    encoding: null,
+    maxBuffer: 100 * 1024 * 1024,
+    windowsHide: true,
+  });
+}
+
+function gitTreeFiles(task, ref) {
+  if (!ref) return [];
+
+  const result = git([
+    "ls-tree",
+    "-r",
+    "-z",
+    "--name-only",
+    ref,
+    "--",
+    taskPathspec(task),
+  ]);
+
+  if (result.error || result.status !== 0) return [];
+
+  const paths = result.stdout.split("\0").filter(Boolean).sort();
+  const files = [];
+
+  for (const artifactPath of paths) {
+    const blob = gitBuffer(["cat-file", "blob", `${ref}:${artifactPath}`]);
+
+    if (blob.error || blob.status !== 0) continue;
+
+    const buffer = blob.stdout;
+    const decoded = textContent(buffer);
+
+    files.push({
+      path: normalizeArtifactPath(artifactPath),
+      available: true,
+      source: "git",
+      size: buffer.length,
+      binary: decoded.binary,
+      tracked: true,
+      ignored: false,
+      git_recoverable: true,
+      content: decoded.content,
+    });
+  }
+
+  return files;
+}
+
+function groupArtifacts(task, source, files) {
+  const prefix = `workflow/tasks/${task}/`;
+  const byRelativePath = new Map(files.map((file) => [
+    file.path.slice(prefix.length),
+    file,
+  ]));
+  const taskDocument = byRelativePath.get("task.md") ||
+    missingArtifact(task, "task.md", source);
+  const planDocument = byRelativePath.get("implementation-plan.md") ||
+    missingArtifact(task, "implementation-plan.md", source);
+  const reviews = [];
+  const supportingMaterials = [];
+
+  for (const [relativePath, file] of byRelativePath) {
+    if (relativePath.startsWith("reviews/")) {
+      reviews.push(file);
+    } else if (relativePath.startsWith("supporting-materials/")) {
+      supportingMaterials.push(file);
+    }
+  }
+
+  return {
+    task_md: taskDocument,
+    implementation_plan: planDocument,
+    reviews: reviews.sort((first, second) => lexicalCompare(first.path, second.path)),
+    supporting_materials: supportingMaterials.sort(
+      (first, second) => lexicalCompare(first.path, second.path)
+    ),
+  };
+}
+
+function statusForTask(lifecycle, task) {
+  const statuses = [
+    ["active", "Active"],
+    ["deleted_pending_commit", "Deleted Pending Commit"],
+    ["deleted_pending_push", "Deleted Pending Push"],
+    ["historical", "Historical"],
+  ];
+
+  for (const [key, label] of statuses) {
+    if (lifecycle[key].includes(task)) return label;
+  }
+
+  return null;
+}
+
+function showTaskModel(task) {
+  const active = activeTasks();
+  const isActive = active.includes(task);
+  let context = null;
+  let status = "Active";
+  let deletionCommit = null;
+  let recoveryCommit = null;
+  let upstream = null;
+
+  if (!isActive) {
+    context = taskLifecycleContext(active);
+    status = statusForTask(context.lifecycle, task);
+
+    if (!status) {
+      console.error(`Task not found: ${task}`);
+      process.exit(1);
+    }
+
+    deletionCommit = context.deletionCommits.get(task) || null;
+    upstream = context.upstream;
+    recoveryCommit = status === "Deleted Pending Commit"
+      ? gitCommit()
+      : recoveryCommitForDeletion(task, deletionCommit);
+  } else {
+    const head = gitCommit();
+    recoveryCommit = head && taskExistsAt(head, task) ? head : null;
+    const upstreamCandidate = configuredUpstream();
+    upstream = upstreamCandidate.ref ? upstreamCandidate : null;
+  }
+
+  const source = isActive ? "working_tree" : "git";
+  const files = isActive
+    ? workingTreeFiles(
+      path.join(targetWorkflow, "tasks", task),
+      `workflow/tasks/${task}`
+    )
+    : gitTreeFiles(task, recoveryCommit);
+  const recordedCommit = recordedCommitForLifecycle(task, recoveryCommit);
+
+  return {
+    task,
+    status,
+    artifacts: groupArtifacts(task, source, files),
+    git: {
+      recorded_commit: commitInfo(recordedCommit),
+      deletion_commit: commitInfo(deletionCommit),
+      recovery_commit: commitInfo(recoveryCommit),
+      upstream: upstreamInfo(upstream),
+    },
+  };
+}
+
+function artifactText(file) {
+  if (!file.available) return "Not available.";
+  if (file.binary) return `[Binary file; ${file.size} bytes]`;
+  if (file.content === null) return `[Content omitted; ${file.size} bytes]`;
+  return file.content || "(empty)";
+}
+
+function artifactListText(files) {
+  if (!files.length) return "No files found.";
+
+  return files.map((file) => {
+    const details = [
+      `${file.size} bytes`,
+      file.binary ? "binary" : "text",
+      file.git_recoverable ? "Git-recoverable" : "not Git-recoverable",
+    ].join(", ");
+    const content = file.content === null ? "" : `\n${file.content || "(empty)"}`;
+    return `${file.path} (${details})${content}`;
+  }).join("\n\n");
+}
+
+function commitText(commit) {
+  if (!commit) return "Unknown";
+  return `${commit.hash} | ${commit.timestamp} | ${commit.subject || "(no subject)"}`;
+}
+
+function showTaskText(model) {
+  const sections = [
+    ["Task", model.task],
+    ["Status", model.status],
+    ["task.md", artifactText(model.artifacts.task_md)],
+    ["implementation-plan.md", artifactText(model.artifacts.implementation_plan)],
+    ["Reviews", artifactListText(model.artifacts.reviews)],
+    ["Supporting Materials", artifactListText(model.artifacts.supporting_materials)],
+    ["Git History", [
+      `Task recorded: ${commitText(model.git.recorded_commit)}`,
+      `Task removed: ${commitText(model.git.deletion_commit)}`,
+      `Recovery snapshot: ${commitText(model.git.recovery_commit)}`,
+      `Upstream: ${model.git.upstream
+        ? `${model.git.upstream.ref} @ ${model.git.upstream.commit}`
+        : "Unknown"}`,
+    ].join("\n")],
+  ];
+
+  return sections.map(([title, content]) => [
+    title,
+    "-".repeat(title.length),
+    content,
+  ].join("\n")).join("\n\n");
+}
+
+function showTask() {
+  const options = showTaskArguments();
+  const model = showTaskModel(options.task);
+
+  console.log(options.json
+    ? JSON.stringify(model, null, 2)
+    : showTaskText(model));
 }
 
 function git(args) {
@@ -1188,6 +1684,7 @@ Usage:
   npx ailovecode-workflow configure-dev "implementation repository"
   npx ailovecode-workflow create-task "task name"
   npx ailovecode-workflow list-tasks [--all | --completed] [--json]
+  npx ailovecode-workflow show-task <task> [--json]
   npx ailovecode-workflow review-context [base] [--json]
   npx ailovecode-workflow version
 
@@ -1217,6 +1714,10 @@ switch (command) {
 
   case "list-tasks":
     listTasks();
+    break;
+
+  case "show-task":
+    showTask();
     break;
 
   case "review-context":
