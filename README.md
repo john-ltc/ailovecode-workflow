@@ -14,6 +14,7 @@ Initialization creates managed workflow guidance, `workflow/tasks/`, and instruc
 Update managed files without replacing tasks:
 
 ```bash
+npm install -D github:john-ltc/ailovecode-workflow
 npx ailovecode-workflow update
 ```
 
