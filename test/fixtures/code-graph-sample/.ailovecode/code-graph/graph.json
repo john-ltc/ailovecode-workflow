@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "project": { "name": "code-graph-sample" },
+  "generated_at": "2026-09-18T00:00:00.000Z",
+  "analysis": {
+    "status": "complete",
+    "warnings": [],
+    "coverage_notes": ["Fixture covers one HTTP write path."]
+  },
+  "nodes": [
+    { "id": "api:post-users", "type": "api_endpoint", "name": "POST /users", "file": "src/routes.js", "line_start": 4, "line_end": 4, "metadata": {} },
+    { "id": "function:user-controller.create", "type": "function", "name": "createUser", "file": "src/user-controller.js", "line_start": 3, "line_end": 6, "metadata": {} },
+    { "id": "service:user.create", "type": "service", "name": "UserService.create", "file": "src/user-service.js", "line_start": 3, "line_end": 5, "metadata": {} },
+    { "id": "repository:user.insert", "type": "repository", "name": "UserRepository.insert", "file": "src/user-repository.js", "line_start": 1, "line_end": 3, "metadata": {} },
+    { "id": "table:users", "type": "db_table", "name": "users", "metadata": {} }
+  ],
+  "edges": [
+    { "id": "edge:route-controller", "from": "api:post-users", "to": "function:user-controller.create", "type": "ROUTES_TO", "confidence": 1, "evidence": [{ "file": "src/routes.js", "line_start": 4, "line_end": 4 }], "metadata": {} },
+    { "id": "edge:controller-service", "from": "function:user-controller.create", "to": "service:user.create", "type": "CALLS", "confidence": 1, "evidence": [{ "file": "src/user-controller.js", "line_start": 4, "line_end": 4 }], "metadata": {} },
+    { "id": "edge:service-repository", "from": "service:user.create", "to": "repository:user.insert", "type": "CALLS", "confidence": 1, "evidence": [{ "file": "src/user-service.js", "line_start": 4, "line_end": 4 }], "metadata": {} },
+    { "id": "edge:repository-table", "from": "repository:user.insert", "to": "table:users", "type": "INSERTS", "confidence": 0.98, "evidence": [{ "file": "src/user-repository.js", "line_start": 2, "line_end": 2 }], "metadata": {} }
+  ]
+}

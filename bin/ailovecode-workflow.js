@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { TextDecoder } = require("util");
+const { startGraphCommand } = require("../lib/code-graph/server");
 
 const command = process.argv[2];
 
@@ -1686,6 +1687,7 @@ Usage:
   npx ailovecode-workflow list-tasks [--all | --completed] [--json]
   npx ailovecode-workflow show-task <task> [--json]
   npx ailovecode-workflow review-context [base] [--json]
+  npx ailovecode-workflow graph [--port <port>]
   npx ailovecode-workflow version
 
 Aliases:
@@ -1722,6 +1724,15 @@ switch (command) {
 
   case "review-context":
     reviewContext();
+    break;
+
+  case "graph":
+    try {
+      startGraphCommand();
+    } catch (error) {
+      console.error(error.message);
+      process.exitCode = 1;
+    }
     break;
 
   case "version":

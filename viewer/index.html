@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AILoveCode Code Graph</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="eyebrow">AILoveCode</p>
+        <h1>Code Graph</h1>
+      </div>
+      <div id="summary" class="summary">Loading graph…</div>
+    </header>
+    <main>
+      <aside class="browser-panel">
+        <label for="search">Search</label>
+        <input id="search" type="search" placeholder="Name or ID">
+        <label for="type-filter">Node type</label>
+        <select id="type-filter"><option value="">All types</option></select>
+        <div class="section-title">Browse</div>
+        <div id="node-list" class="node-list"></div>
+      </aside>
+      <section class="graph-panel">
+        <div class="toolbar">
+          <button id="reset">Root nodes</button>
+          <button id="expand" disabled>Expand neighbors</button>
+          <button id="collapse" disabled>Collapse selected</button>
+          <span id="visible-count"></span>
+        </div>
+        <svg id="graph" role="img" aria-label="Code relationship graph"></svg>
+      </section>
+      <aside class="details-panel">
+        <div id="details" class="empty-state">Select a node or relationship to inspect it.</div>
+      </aside>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
