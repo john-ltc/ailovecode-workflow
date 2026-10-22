@@ -18,6 +18,16 @@ npm install -D github:john-ltc/ailovecode-workflow
 npx ailovecode-workflow update
 ```
 
+### Optional: Separate Task and Code Repositories
+
+If this repository stores workflow tasks and your code lives elsewhere, run:
+
+```bash
+npx ailovecode-workflow configure-dev "path/to/implementation-project"
+```
+
+Run this from the workflow task repository after initialization. Replace the path with your implementation repository's path. See [Split-Repository Setup](#split-repository-setup) for details.
+
 ## Recommended Human and AI Workflow
 
 Send these prompts to your coding agent. Include the full task-folder path when the active task is unclear. The agent follows [workflow/guidelines.md](workflow/guidelines.md) and uses official workflow commands where available.
