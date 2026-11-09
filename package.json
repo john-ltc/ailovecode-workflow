@@ -23,7 +23,7 @@
   "license": "MIT",
   "author": "john-ltc",
   "bin": {
-    "ailovecode-workflow": "./bin/ailovecode-workflow.js"
+    "ailovecode-workflow": "bin/ailovecode-workflow.js"
   },
   "files": [
     "bin/",
