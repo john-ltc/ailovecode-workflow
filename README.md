@@ -6,16 +6,14 @@ A lightweight workflow that guides humans and AI through requirements, planning,
 
 Requires Node.js 18 or later.
 
-### From npm (after publication)
-
-> The npm package is not published yet. These commands work once `ailovecode-workflow` is available on the npm registry.
+### From npm
 
 ```bash
 npm install -D ailovecode-workflow
 npx ailovecode-workflow init
 ```
 
-### From GitHub
+### From GitHub (latest development version)
 
 ```bash
 npm install -D github:john-ltc/ailovecode-workflow
