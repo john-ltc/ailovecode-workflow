@@ -9,6 +9,135 @@ This project uses a lightweight, file-based workflow for AI-assisted development
 - `supporting-materials/` — task-local references.
 - `reviews/` — timestamped Developer Task Review reports created only when reviews are completed.
 
+## Human and AI Workflow
+
+Send these prompts to your coding agent. Include the full task-folder path when the active task is unclear. The agent follows `guidelines.md` and uses the official commands where available.
+
+```text
+Create Task → Write task.md → Understand → Plan → Implement → Validate
+→ Review the Task → Commit/Push/PR → Review the PR → Merge and Clean Up
+```
+
+### 1. Create Task
+
+**Human → AI**
+
+```text
+Create task "add-user-profile"
+```
+
+Outcome: a new task folder with a `task.md` template, an empty `implementation-plan.md`, and `supporting-materials/`.
+
+### 2. Write Requirements
+
+**Human**
+
+Write the context, request, and references in `task.md`.
+
+### 3. Understand the Task
+
+**Human → AI**
+
+```text
+Understand the task.
+```
+
+Outcome: a task summary, key requirements, and clarifications. Discuss open questions in chat.
+
+### 4. Create Plan
+
+**Human → AI**
+
+```text
+Create plan
+```
+
+Outcome: milestones, steps, and a testing approach in `implementation-plan.md`. Review the plan and request changes before implementation. Understanding alone does not start planning or implementation.
+
+### 5. Implement the Plan
+
+**Human → AI**
+
+```text
+Implement it
+```
+
+Outcome: implementation changes, relevant checks, and progress updates.
+
+### 6. Development Checkpoint
+
+**Human**
+
+For larger work, the AI pauses at a meaningful testable stage and provides test steps. Test it, then reply:
+
+```text
+It work. Continue.
+```
+
+If something fails, request a fix and retest. When implementation is complete, test the finished behavior against your requirements, even if no checkpoint was needed.
+
+### 7. Review the Task
+
+**Human → AI (Developer)**
+
+```text
+Review the task
+```
+
+Outcome: Developer Task Review findings for task alignment, plan alignment, and engineering quality, saved as a timestamped report in the task's `reviews/` folder. Request fixes separately, then review again as needed.
+
+### 8. Commit, Push, and Create a PR
+
+**Human → AI (Developer)**
+
+Send each prompt separately when ready:
+
+```text
+Commit the changes
+```
+
+```text
+Push the branch
+```
+
+```text
+Create a pull request
+```
+
+Outcome: each requested action is performed and reported. One action does not authorize the next.
+
+### 9. Review the PR
+
+**Human → AI (Reviewer)**
+
+```text
+Review the PR
+```
+
+Outcome: an independent, private review with findings and a verdict. It is submitted to the PR only when you explicitly ask.
+
+### 10. Merge and Clean Up
+
+**Human → AI (Maintainer / Approver)**
+
+**Code and tasks in one repository:**
+
+```text
+Merge this PR.
+```
+
+Outcome: the AI checks that the task files are saved in Git history, removes the task folder on the PR branch, commits and pushes the cleanup, re-checks, and merges. Clicking Merge in the Git host does not run this cleanup.
+
+**Code and tasks in separate repositories:** merge the implementation PR first. Then, in the task repository:
+
+```text
+Clean up task <full-task-folder-name> in <task-repository>.
+```
+
+Then request a commit and push (or a cleanup PR) for that cleanup. The code merge and task cleanup are separate results.
+
+Where repository policy permits, the [Direct-Merge Flow](#direct-merge-flow) can replace steps 8 to 10. See [PR Flow](#pr-flow) and [Split-Repository Workflow](#split-repository-workflow) for details.
+
 ## Commands
 
 ```bash
@@ -152,12 +281,3 @@ PR conversation        = submitted PR Review history
 ```
 
 Deleted artifacts are recoverable only when committed and still reachable. Historical task status reflects locally known upstream reachability and does not prove successful implementation or merge. No archive directory or provider-specific merge strategy is required, but agents should warn when a strategy can make historical artifacts harder to trace.
-
-## Recommended Task Lifecycle
-
-```text
-Create Task → Write task.md → Understand → Plan → Implement → Validate
-→ Developer Task Review → explicit Git/integration actions → final cleanup
-```
-
-For larger features, the AI may provide a Development Checkpoint when there is something meaningful to test.
