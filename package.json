@@ -1,10 +1,39 @@
 {
   "name": "ailovecode-workflow",
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "description": "A lightweight, file-based workflow that guides humans and AI coding agents through tasks, planning, implementation, review, and delivery.",
+  "keywords": [
+    "ai",
+    "ai-coding",
+    "coding-agent",
+    "workflow",
+    "task-management",
+    "implementation-plan",
+    "code-review",
+    "cli"
+  ],
+  "homepage": "https://github.com/john-ltc/ailovecode-workflow#readme",
+  "bugs": {
+    "url": "https://github.com/john-ltc/ailovecode-workflow/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/john-ltc/ailovecode-workflow.git"
+  },
+  "license": "MIT",
+  "author": "john-ltc",
   "bin": {
     "ailovecode-workflow": "./bin/ailovecode-workflow.js"
   },
+  "files": [
+    "bin/",
+    "workflow/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "prepublishOnly": "npm test"
   }
 }

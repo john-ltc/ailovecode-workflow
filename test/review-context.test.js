@@ -419,7 +419,11 @@ test("existing commands remain available", (t) => {
   assert.match(help.stdout, /list-tasks \[--all \| --completed\]/);
   assert.match(help.stdout, /review-context \[base\]/);
   assert.equal(version.status, 0, version.stderr);
-  assert.match(version.stdout, /AILoveCode Workflow v1\.0\.0/);
+  const { version: packageVersion } = require("../package.json");
+  assert.equal(
+    version.stdout.trim(),
+    `AILoveCode Workflow v${packageVersion}`
+  );
   assert.equal(init.status, 0, init.stderr);
   assert.equal(createTask.status, 0, createTask.stderr);
   assert.equal(

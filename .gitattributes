@@ -1,0 +1,4 @@
+# Keep published files LF even when packed from a Windows checkout:
+# the CLI shebang must be Unix-compatible, and workflow templates are copied into user projects.
+bin/*.js text eol=lf
+workflow/*.md text eol=lf

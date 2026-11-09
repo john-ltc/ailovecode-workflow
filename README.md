@@ -4,6 +4,19 @@ A lightweight workflow that guides humans and AI through requirements, planning,
 
 ## Installation
 
+Requires Node.js 18 or later.
+
+### From npm (after publication)
+
+> The npm package is not published yet. These commands work once `ailovecode-workflow` is available on the npm registry.
+
+```bash
+npm install -D ailovecode-workflow
+npx ailovecode-workflow init
+```
+
+### From GitHub
+
 ```bash
 npm install -D github:john-ltc/ailovecode-workflow
 npx ailovecode-workflow init
@@ -11,12 +24,20 @@ npx ailovecode-workflow init
 
 Initialization creates managed workflow guidance, `workflow/tasks/`, and instruction blocks in `AGENTS.md` and `CLAUDE.md`.
 
-Update managed files without replacing tasks:
+### Updating
+
+Install the newer package version, then update managed files:
 
 ```bash
-npm install -D github:john-ltc/ailovecode-workflow
+npm install -D ailovecode-workflow@latest   # or: npm install -D github:john-ltc/ailovecode-workflow
 npx ailovecode-workflow update
 ```
+
+`update` affects files as follows:
+
+- **Overwritten:** managed workflow files such as `workflow/guidelines.md` and `workflow/README.md`. Local edits to these files are replaced, so keep project-specific rules elsewhere.
+- **Refreshed:** the `<ailovecode-workflow>` block in `AGENTS.md` and `CLAUDE.md`. Content outside that block is kept.
+- **Preserved:** `workflow/tasks/`, including `task.md`, `implementation-plan.md`, `supporting-materials/`, and `reviews/`, plus any other project files.
 
 ### Optional: Separate Task and Code Repositories
 
@@ -434,4 +455,4 @@ workflow/
 
 ## License
 
-MIT
+[MIT](LICENSE)
