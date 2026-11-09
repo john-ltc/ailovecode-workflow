@@ -1,6 +1,6 @@
 {
   "name": "ailovecode-workflow",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A lightweight, file-based workflow that guides humans and AI coding agents through tasks, planning, implementation, review, and delivery.",
   "keywords": [
     "ai",
