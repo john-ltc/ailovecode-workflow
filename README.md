@@ -24,10 +24,19 @@ Initialization creates managed workflow guidance, `workflow/tasks/`, and instruc
 
 ### Updating
 
-Install the newer package version, then update managed files:
+Install the newer package version, then update managed files.
+
+From npm:
 
 ```bash
-npm install -D ailovecode-workflow@latest   # or: npm install -D github:john-ltc/ailovecode-workflow
+npm install -D ailovecode-workflow@latest
+npx ailovecode-workflow update
+```
+
+From GitHub:
+
+```bash
+npm install -D github:john-ltc/ailovecode-workflow
 npx ailovecode-workflow update
 ```
 
